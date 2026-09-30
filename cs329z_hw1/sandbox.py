@@ -44,6 +44,20 @@ The workspace holds the corpus: ``docs/`` is a copy, and ``emails.jsonl`` is
 a copy-on-write clone where the file system supports one (macOS APFS; Linux
 btrfs and XFS). Elsewhere it is a symlink to the real archive, which is then
 made read-only.
+
+On Windows (without WSL), layers 1 to 3 apply with these differences, and
+there is no layer 4: ``jail()`` is "none", so a command that runs
+``python3`` can use the network and read or write any file you can.
+* The shell is the ``bash.exe`` of Git for Windows, and the allowed
+  programs are the ones in its ``usr/bin``. If Git for Windows is not
+  installed, every command is rejected with a message that says so.
+* The PATH directory holds one small script per allowed program instead of
+  a link (a plain Windows user cannot create symlinks).
+* The command runs in a job object, which is what is killed at the timeout.
+* Windows line endings (``\\r\\n``) in the output are turned into ``\\n``.
+* ``emails.jsonl`` is a hard link to the real archive, which is made
+  read-only until this process exits (a copy, if the link cannot be made).
+The details are in ``sandbox_windows.py``.
 """
 
 from __future__ import annotations
@@ -63,7 +77,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from cs329z_hw1 import data
+from cs329z_hw1 import data, sandbox_windows
 
 ALLOWED_PROGRAMS = (
     "python3", "python", "cat", "head", "tail", "grep", "wc", "sort", "uniq", "cut",
@@ -74,8 +88,13 @@ SHELL_BUILTINS = ("cd", "echo", "printf", "pwd", "read", "test", "[", "true", "f
 MAX_OUTPUT_BYTES = 4_000_000  # per stream
 
 _KEYWORDS = {"if", "then", "elif", "else", "fi", "while", "until", "do", "done", "!", "{", "}"}
-_SYSTEM_PATH = "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"
-_SHELL = "/bin/bash" if os.path.exists("/bin/bash") else "/bin/sh"
+_WINDOWS = sys.platform == "win32"
+if _WINDOWS:  # the programs and the shell come from Git for Windows; None if it is not installed
+    _SYSTEM_PATH = str(sandbox_windows.git_usr_bin() or "")
+    _SHELL = os.path.join(_SYSTEM_PATH, "bash.exe") if _SYSTEM_PATH else None
+else:
+    _SYSTEM_PATH = "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"
+    _SHELL = "/bin/bash" if os.path.exists("/bin/bash") else "/bin/sh"
 
 
 @dataclass
@@ -84,7 +103,7 @@ class TerminalResult:
     stderr: str = ""
     exit_code: int | None = None  # None if the command was rejected or timed out
     timed_out: bool = False
-    rejected: bool = False  # True if the allowlist check refused the command
+    rejected: bool = False  # True if the allowlist check refused the command, or there is no shell
     reason: str = ""  # why it was rejected or killed; "" otherwise
 
 
@@ -152,19 +171,29 @@ def check_command(cmd: str) -> str:
 def _state_dir() -> Path:
     """A temporary directory for this process, removed when the process exits."""
     path = Path(tempfile.mkdtemp(prefix="cs329z_hw1_sandbox_")).resolve()
-    atexit.register(shutil.rmtree, path, ignore_errors=True)
+    atexit.register(_remove_tree, path)
     return path
+
+
+def _remove_tree(path: Path) -> None:
+    if _WINDOWS:  # a read-only file (the archive's hard link) cannot be deleted as it is
+        for file in path.rglob("*"):
+            file.chmod(0o666)
+    shutil.rmtree(path, ignore_errors=True)
 
 
 @functools.cache
 def _bin_dir() -> Path:
-    """The directory used as PATH: one symlink per allowed program found on this machine."""
+    """The directory used as PATH: one symlink per allowed program found on this
+    machine (on Windows, a script that runs the program)."""
     bin_dir = _state_dir() / "bin"
     bin_dir.mkdir()
     python = os.path.realpath(getattr(sys, "_base_executable", "") or sys.executable)
     for name in ALLOWED_PROGRAMS:
         target = python if name.startswith("python") else shutil.which(name, path=_SYSTEM_PATH)
-        if target:
+        if target and _WINDOWS:
+            sandbox_windows.write_shim(bin_dir / name, target)
+        elif target:
             (bin_dir / name).symlink_to(target)
     return bin_dir
 
@@ -178,14 +207,30 @@ def make_workspace(path: str | Path | None = None) -> Path:
     ws.mkdir(parents=True, exist_ok=True)
     emails, docs = ws / "emails.jsonl", ws / "docs"
     if data.EMAILS_PATH.exists() and not os.path.lexists(emails):
-        clone = ["cp", "-c"] if sys.platform == "darwin" else ["cp", "--reflink=always"]
-        if subprocess.run([*clone, data.EMAILS_PATH, emails], capture_output=True).returncode != 0:
-            emails.unlink(missing_ok=True)  # no clone: link to the real file, made read-only
-            os.chmod(data.EMAILS_PATH, 0o444)
-            emails.symlink_to(data.EMAILS_PATH.resolve())
+        if _WINDOWS:  # no clone: a hard link to the real file, made read-only; else a copy
+            try:
+                os.link(data.EMAILS_PATH, emails)
+            except OSError:
+                shutil.copyfile(data.EMAILS_PATH, emails)
+            else:
+                _read_only_until_exit(data.EMAILS_PATH)
+        else:
+            clone = ["cp", "-c"] if sys.platform == "darwin" else ["cp", "--reflink=always"]
+            if subprocess.run([*clone, data.EMAILS_PATH, emails], capture_output=True).returncode != 0:
+                emails.unlink(missing_ok=True)  # no clone: link to the real file, made read-only
+                os.chmod(data.EMAILS_PATH, 0o444)
+                emails.symlink_to(data.EMAILS_PATH.resolve())
     if data.DOCS_DIR.is_dir() and not docs.exists():
         shutil.copytree(data.DOCS_DIR, docs)
     return ws
+
+
+@functools.cache
+def _read_only_until_exit(path: Path) -> None:
+    """Make ``path`` read-only, and writable again when this process exits
+    (so that ``data/download.py`` can replace the archive)."""
+    os.chmod(path, 0o444)
+    atexit.register(lambda: path.exists() and os.chmod(path, 0o666))
 
 
 def default_workspace() -> Path:
@@ -224,7 +269,9 @@ def _jail_argv(workspace: Path) -> list[str]:
 def jail() -> str:
     """Which OS jail is in use: "sandbox-exec", "bwrap" or "none". The jail
     is tried once on a trivial command. If that fails (for example because
-    this process is itself sandboxed), no jail is used."""
+    this process is itself sandboxed), no jail is used. Windows has none."""
+    if _WINDOWS:
+        return "none"
     argv = _jail_argv(_state_dir())
     try:
         if argv and subprocess.run([*argv, _SHELL, "-c", "true"], capture_output=True, timeout=10).returncode == 0:
@@ -242,7 +289,8 @@ def _drain(pipe, buf: bytearray) -> None:
 
 def _text(buf: bytearray) -> str:
     note = f"\n[sandbox: output cut off after {MAX_OUTPUT_BYTES} bytes]" if len(buf) >= MAX_OUTPUT_BYTES else ""
-    return bytes(buf).decode("utf-8", errors="replace") + note
+    text = bytes(buf).decode("utf-8", errors="replace")
+    return (text.replace("\r\n", "\n") if _WINDOWS else text) + note
 
 
 def run_terminal(cmd: str, *, workspace: str | Path | None = None, timeout: float = 10.0) -> TerminalResult:
@@ -256,16 +304,23 @@ def run_terminal(cmd: str, *, workspace: str | Path | None = None, timeout: floa
     reason = check_command(cmd)
     if reason:
         return TerminalResult(rejected=True, reason=reason)
+    if _SHELL is None:  # Windows without Git for Windows
+        return TerminalResult(rejected=True, reason=sandbox_windows.INSTALL_HINT)
     ws = make_workspace(workspace) if workspace is not None else default_workspace()
     env = {
         "PATH": str(_bin_dir()), "HOME": str(ws), "TMPDIR": str(ws),
         "LC_ALL": "C", "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1",
+        **(sandbox_windows.child_env(ws) if _WINDOWS else {}),
     }  # fmt: skip
     argv = (_jail_argv(ws) if jail() != "none" else []) + [_SHELL, "-c", cmd]
+    job = sandbox_windows.Job() if _WINDOWS else None  # Windows: a job object stands in for the process group
     proc = subprocess.Popen(
-        argv, cwd=ws, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, start_new_session=True,  # new session = own process group
+        argv, cwd=ws, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        start_new_session=not _WINDOWS,  # new session = own process group
+        creationflags=subprocess.CREATE_NO_WINDOW if _WINDOWS else 0,
     )  # fmt: skip
+    if job:
+        job.add(proc)
     out, err = bytearray(), bytearray()
     readers = [
         threading.Thread(target=_drain, args=(pipe, buf), daemon=True)
@@ -278,10 +333,13 @@ def run_terminal(cmd: str, *, workspace: str | Path | None = None, timeout: floa
         proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
         timed_out = True
-    try:  # kill whatever is left in the group: the command itself, or jobs it left behind
-        os.killpg(proc.pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
-        pass
+    if job:  # kill whatever is left in the group: the command itself, or jobs it left behind
+        job.kill()
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
     proc.wait()
     for reader in readers:
         reader.join(timeout=1.0)

@@ -80,6 +80,8 @@ def install(gz_path: Path, source: dict) -> int:
     if count != source["emails"]:
         tmp.unlink()
         sys.exit(f"Expected {source['emails']} emails, found {count} lines. Not installed.")
+    if EMAILS_PATH.exists():
+        EMAILS_PATH.chmod(0o644)  # the sandbox may have made it read-only
     tmp.replace(EMAILS_PATH)
     return count
 

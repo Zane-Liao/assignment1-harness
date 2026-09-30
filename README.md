@@ -11,7 +11,11 @@ you will run, and where things are.
    https://docs.astral.sh/uv/getting-started/installation/
 
    The assignment needs Python 3.11 or newer. `uv` installs one if you do
-   not have it. macOS and Linux are supported. On Windows, use WSL.
+   not have it. macOS, Linux and Windows are supported. On Windows, also
+   install Git for Windows (https://git-scm.com/download/win, default
+   options): the terminal sandbox runs commands with the `bash.exe` it
+   ships, and there is no operating-system jail on Windows (see "The
+   terminal sandbox" below). WSL works too and gives you the Linux jail.
 
 2. Create your `.env` file and add your API key:
 
@@ -136,37 +140,40 @@ defined in `cs329z_hw1/types.py`. Use them as they are.
 
 ## Repository layout
 
-Files marked *provided* are course code. Read them, but do not edit them.
+Files marked *provided* are course code. Read them, but do not edit them:
+grading uses the course's own copies. Files marked *read* hold interfaces
+you build on or rules the tests check; read each one before the problem
+that first uses it.
 
 ```
 README.md  pyproject.toml  .env.example
 cs329z_hw1/
-  llm.py          provided  LM, ScriptedLM, cache, ledger, budget
-  types.py        provided  data types shared by your code and the tests
-  tokens.py       provided  count_tokens, count_message_tokens (4 characters per token)
-  tokenizer.py    provided  tokenize(), the tokenizer BM25 must use
-  data.py         provided  load_emails(), emails_on(), email_text(), load_docs()
-  sandbox.py      provided  run_terminal(), make_workspace()
-  cardinal.py     provided  names and argument schemas of the agent's tools
-  user.py         provided  UserIO, ScriptedUser, ConsoleUser
-  chat.py         provided  terminal chat with your agent
-  simulation/     provided  simulated users, judge, evaluation runner
-  pipelines/      yours     Part 1 (starts empty)
-  agent/          yours     Part 2 (starts empty)
+  llm.py                provided  read  LM, ScriptedLM, cache, ledger, budget
+  types.py              provided  read  data types shared by your code and the tests
+  tokens.py             provided  read  count_tokens, count_message_tokens (4 characters per token)
+  tokenizer.py          provided        tokenize(), the tokenizer BM25 must use
+  data.py               provided  read  load_emails(), emails_on(), email_text(), load_docs()
+  sandbox.py            provided  read  run_terminal(), make_workspace()
+  cardinal.py           provided  read  names and argument schemas of the agent tools
+  user.py               provided  read  UserIO, ScriptedUser, ConsoleUser
+  chat.py               provided        terminal chat with your agent
+  simulation/           provided        simulated users, judge, evaluation runner (see its README.md)
+  pipelines/            yours           Part 1 (starts empty)
+  agent/                yours           Part 2 (starts empty)
 tests/
-  adapters.py     yours     the only file connecting your code to the tests
-  conftest.py     provided
-  helpers.py      provided
-  thresholds.py   provided  pass thresholds for the live tests
-  test_*.py       provided  one file per problem
-  fixtures/       provided  gold labels, scripted sessions, personas
+  adapters.py           yours     read  the only file connecting your code to the tests
+  conftest.py           provided
+  helpers.py            provided
+  thresholds.py         provided        pass thresholds for the live tests
+  test_*.py             provided  read  one file per problem; read the one you are on
+  fixtures/             provided        gold labels, scripted sessions, personas
 data/
-  docs/           provided  Cardinal Energy documents
-  priority_rubric.md  provided  how the gold priority labels were assigned
-  emails.jsonl.gz provided  the email archive, compressed
-  download.py     provided  verifies and unpacks the archive
-  source.json     provided  the archive's checksum
-  emails/         unpacked by download.py, gitignored
+  docs/                 provided        Cardinal Energy documents
+  emails.jsonl.gz       provided        the email archive, compressed
+  download.py           provided        verifies and unpacks the archive
+  source.json           provided        checksum of the archive
+  priority_rubric.md    provided  read  how the gold priority labels were assigned
+  emails/                         unpacked by download.py, gitignored
 ```
 
 
@@ -190,6 +197,15 @@ installed and permitted), or `none`. With `none`, a command that runs
 `python3` can reach the network and any file your account can. On Linux you
 can install bubblewrap with your package manager (for example
 `sudo apt install bubblewrap`).
+
+On Windows it always prints `none`: there is no OS jail there, so the
+allowlist, the scrubbed environment and the timeout are the only limits.
+The shell and the allowed programs (`grep`, `sort`, `awk` and the rest)
+come from Git for Windows, so it must be installed; without it every
+command is rejected with a message that says so. Commands are written as on
+Linux (`grep`, `wc -l`, pipes, `python3 -c '...'`); `python3` is the Python
+that `uv` installed, without the project's packages. Line endings in a
+command's output are normalized to `\n`.
 
 Each command runs in a workspace directory that holds `emails.jsonl` and
 `docs/`. Here-documents (`<<EOF`) are rejected; multi-line Python goes in

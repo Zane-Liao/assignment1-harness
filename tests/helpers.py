@@ -13,8 +13,8 @@ def load_fixture(name: str):
     """Load tests/fixtures/<name> (.json, or .jsonl as a list)."""
     path = FIXTURES / name
     if path.suffix == ".jsonl":
-        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-    return json.loads(path.read_text())
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def normalize(text: str) -> str:

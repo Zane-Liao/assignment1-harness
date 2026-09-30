@@ -65,7 +65,7 @@ def run_eval(
         memory_out = out_dir / f"{persona.id}.memory" if out_dir is not None else None
         record = run_persona(persona, make_session, agent_lms=agent_lms, workdir=workdir, memory_out=memory_out)
         if out_dir is not None:
-            (out_dir / f"{persona.id}.json").write_text(record.to_json())
+            (out_dir / f"{persona.id}.json").write_text(record.to_json(), encoding="utf-8")
         return record
 
     if out_dir is not None:
@@ -74,7 +74,7 @@ def run_eval(
     with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
         records = list(pool.map(one, personas))
     if out_dir is not None:
-        (out_dir / "summary.txt").write_text(format_table(records) + "\n")
+        (out_dir / "summary.txt").write_text(format_table(records) + "\n", encoding="utf-8")
     return records
 
 

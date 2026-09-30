@@ -61,6 +61,9 @@ PRICES = {
     "gpt-5.4": (2.50, 0.25, 15.00),
     "gpt-5.4-mini": (0.75, 0.075, 4.50),
     "gpt-5.4-nano": (0.20, 0.02, 1.25),
+    "gpt-5.6-luna": (0.20, 0.02, 1.20),
+    "gpt-5.6-terra": (2.00, 0.20, 12.00),
+    "gpt-6-astra": (10.00, 1.00, 50.00),
     "gpt-5.5": (5.00, 0.50, 30.00),
     "gpt-6-luna": (0.10, 0.01, 0.50),
     "gpt-6-sol": (2.00, 0.20, 10.00),
@@ -121,6 +124,10 @@ def _load_env() -> None:
 
 
 _ledger_lock = threading.Lock()
+# Models that reject the temperature or reasoning_effort parameters, learned
+# from the provider's error the first time each is used.
+_NO_TEMPERATURE: set[str] = set()
+_NO_EFFORT: set[str] = set()
 
 
 def read_ledger() -> list[dict]:
@@ -128,7 +135,7 @@ def read_ledger() -> list[dict]:
     if not path.exists():
         return []
     rows = []
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line:
             try:
@@ -146,7 +153,7 @@ def _append_ledger(row: dict) -> None:
     path = _cache_dir() / "ledger.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     with _ledger_lock:
-        with open(path, "a") as f:
+        with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
 
 
@@ -222,7 +229,7 @@ class LM:
         self.calls += 1
         if self.cache and path.exists():
             self.cached_calls += 1
-            return json.loads(path.read_text())["text"]
+            return json.loads(path.read_text(encoding="utf-8"))["text"]
 
         self._check_budget()
         start = time.time()
@@ -248,7 +255,7 @@ class LM:
         if self.cache:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
-            tmp.write_text(json.dumps({"text": text, "model": self.model}))
+            tmp.write_text(json.dumps({"text": text, "model": self.model}), encoding="utf-8")
             tmp.replace(path)
         return text
 
@@ -294,12 +301,30 @@ class LM:
                     "OPENAI_API_KEY is not set. Copy .env.example to .env and add your key."
                 )
             self._client = OpenAI(max_retries=6, timeout=120)
-        response = self._client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=self.temperature,
-            max_completion_tokens=self.max_tokens,
-        )
+        kwargs: dict = {
+            "model": self.model,
+            "messages": messages,
+            "max_completion_tokens": self.max_tokens,
+        }
+        if self.model not in _NO_TEMPERATURE:
+            kwargs["temperature"] = self.temperature
+        effort = os.environ.get("CS329Z_REASONING_EFFORT")
+        if effort and self.model not in _NO_EFFORT:
+            kwargs["reasoning_effort"] = effort
+        try:
+            response = self._client.chat.completions.create(**kwargs)
+        except Exception as exc:  # some models reject temperature or reasoning_effort
+            text = str(exc)
+            if "temperature" in text and "temperature" in kwargs:
+                _NO_TEMPERATURE.add(self.model)
+                kwargs.pop("temperature")
+                response = self._client.chat.completions.create(**kwargs)
+            elif "reasoning_effort" in text and "reasoning_effort" in kwargs:
+                _NO_EFFORT.add(self.model)
+                kwargs.pop("reasoning_effort")
+                response = self._client.chat.completions.create(**kwargs)
+            else:
+                raise
         text = response.choices[0].message.content or ""
         u = response.usage
         details = getattr(u, "prompt_tokens_details", None)

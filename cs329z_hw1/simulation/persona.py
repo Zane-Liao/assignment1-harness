@@ -164,7 +164,7 @@ def parse_persona(data: dict, source: str = "persona") -> Persona:
 
 def load_persona(path: str | Path) -> Persona:
     path = Path(path)
-    return parse_persona(json.loads(path.read_text()), source=path.name)
+    return parse_persona(json.loads(path.read_text(encoding="utf-8")), source=path.name)
 
 
 def load_personas(directory: str | Path) -> list[Persona]:
