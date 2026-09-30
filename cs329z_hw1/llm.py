@@ -181,7 +181,9 @@ class LM:
         to use the role named by the CS329Z_MODEL environment variable
         (default "grading").
     temperature, max_tokens:
-        Sampling settings. They are part of the cache key.
+        Sampling settings. They are part of the cache key. Reasoning models
+        spend part of ``max_tokens`` on hidden reasoning, so keep it large.
+        Models that reject ``temperature`` are called without it.
     tag:
         A free-form label written to the cost ledger so spending can be
         grouped (the test suite sets it to the test name).
@@ -197,7 +199,7 @@ class LM:
         model: str | None = None,
         *,
         temperature: float = 0.0,
-        max_tokens: int = 1024,
+        max_tokens: int = 4096,
         tag: str | None = None,
         cache: bool = True,
         salt: str = "",
