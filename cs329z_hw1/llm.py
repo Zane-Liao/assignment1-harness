@@ -43,11 +43,15 @@ Message = dict  # {"role": "system" | "user" | "assistant", "content": str}
 # Model used for each role. Override any of these with the environment
 # variable CS329Z_<ROLE>_MODEL, e.g. CS329Z_GRADING_MODEL.
 DEFAULT_MODELS = {
-    "grading": "gpt-4.1-mini-2025-04-14",  # the model your agent is graded with
-    "dev": "gpt-4o-mini-2024-07-18",  # cheaper model for iterating
-    "user": "gpt-4.1-mini-2025-04-14",  # plays the simulated users
-    "judge": "gpt-4.1-2025-04-14",  # scores evaluation transcripts
+    "grading": "gpt-6-luna",  # the model your agent is graded with
+    "dev": "gpt-6-luna",  # the model CS329Z_MODEL=dev selects (same by default)
+    "user": "gpt-6-luna",  # plays the simulated users
+    "judge": "gpt-6-sol",  # scores evaluation transcripts
 }
+
+# Reasoning effort requested from models that accept it (GPT-5 and GPT-6).
+# Override with CS329Z_REASONING_EFFORT.
+DEFAULT_REASONING_EFFORT = "low"
 
 # USD per 1M tokens: (input, cached input, output). Standard tier,
 # https://developers.openai.com/api/docs/pricing, read 2026-09-30.
@@ -254,7 +258,7 @@ class LM:
                 "seconds": round(elapsed, 3),
             }
         )
-        if self.cache:
+        if self.cache and text.strip():  # an empty reply is not worth remembering
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
             tmp.write_text(json.dumps({"text": text, "model": self.model}), encoding="utf-8")
@@ -276,8 +280,9 @@ class LM:
     # -- internals --------------------------------------------------------
 
     def _key(self, messages: list[Message]) -> str:
+        effort = os.environ.get("CS329Z_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
         blob = json.dumps(
-            [self.model, self.temperature, self.max_tokens, self.salt, messages],
+            [self.model, self.temperature, self.max_tokens, effort, self.salt, messages],
             sort_keys=True,
             ensure_ascii=False,
         )
@@ -310,7 +315,7 @@ class LM:
         }
         if self.model not in _NO_TEMPERATURE:
             kwargs["temperature"] = self.temperature
-        effort = os.environ.get("CS329Z_REASONING_EFFORT")
+        effort = os.environ.get("CS329Z_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
         if effort and self.model not in _NO_EFFORT:
             kwargs["reasoning_effort"] = effort
         try:

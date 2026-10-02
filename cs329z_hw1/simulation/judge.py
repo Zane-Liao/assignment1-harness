@@ -6,9 +6,10 @@ the user and the agent said to each other, questions, approvals) and a
 compact list of the agent's tool calls with the start of each result. It
 does not see the agent's prompts.
 
-The judge runs at temperature 0 through the cached ``LM``. Its input is a
-function of the conversation record only, so scoring an unchanged
-conversation again is served from the cache.
+The judge runs through the cached ``LM`` on the "judge" model at the
+provider's default sampling. Its input is a function of the conversation
+record only, so scoring an unchanged conversation again is served from the
+cache.
 """
 
 from __future__ import annotations
@@ -194,7 +195,7 @@ def judge_record(persona: Persona, record: ConversationRecord, lm: Callable) -> 
     reply = lm(messages)
     result = parse_verdict(reply, len(persona.rubric))
     if result is None:
-        # One more attempt with the format restated; still temperature 0.
+        # One more attempt with the format restated.
         messages = messages + [
             {"role": "assistant", "content": reply},
             {"role": "user", "content": "Your reply did not follow the format. Reply again in exactly the required format, ending with VERDICT: PASS or VERDICT: FAIL."},

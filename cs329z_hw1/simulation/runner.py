@@ -37,10 +37,12 @@ EVAL_MAX_TURNS = 20  # model calls per user message
 EVAL_TOKEN_BUDGET = 400_000  # tokens per user message
 EVAL_CONTEXT_BUDGET = 16_000  # tokens in any one model call
 
-# Settings of the simulated-user model and the judge model.
-USER_TEMPERATURE = 0.0
-USER_MAX_TOKENS = 300
-JUDGE_MAX_TOKENS = 700
+# Settings of the simulated-user model and the judge model. Both run at the
+# provider's default sampling (the course models do not take a temperature);
+# the cache makes a repeat of an unchanged conversation deterministic. The
+# token limits include a reasoning model's hidden reasoning tokens.
+USER_MAX_TOKENS = 1000
+JUDGE_MAX_TOKENS = 2500
 
 
 def eval_salt() -> str:
@@ -55,7 +57,6 @@ def make_user_lm(persona: Persona) -> LM:
     cache entries."""
     return LM(
         "user",
-        temperature=USER_TEMPERATURE,
         max_tokens=USER_MAX_TOKENS,
         salt=f"persona:{persona.id}:{eval_salt()}",
         tag=f"sim_eval/{persona.id}/user",
@@ -63,7 +64,7 @@ def make_user_lm(persona: Persona) -> LM:
 
 
 def make_judge_lm(persona: Persona) -> LM:
-    return LM("judge", temperature=0.0, max_tokens=JUDGE_MAX_TOKENS, tag=f"sim_eval/{persona.id}/judge")
+    return LM("judge", max_tokens=JUDGE_MAX_TOKENS, tag=f"sim_eval/{persona.id}/judge")
 
 
 def build_config(persona: Persona, user: PersonaUser, memory_dir: Path, workspace: Path) -> AgentConfig:

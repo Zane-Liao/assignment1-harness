@@ -68,9 +68,10 @@ uv run pytest tests/test_priority.py -m live   # one problem
 Two environment variables make live runs cheaper while you iterate:
 
 - `CS329Z_EVAL_SLICE=N` runs each live test on its first N items only.
-- `CS329Z_MODEL=dev` uses the cheaper development model (`gpt-4o-mini`)
-  instead of the grading model (`gpt-4.1-mini`, the default). Grading uses
-  the grading model.
+- `CS329Z_MODEL=dev` runs your code on the model named by `CS329Z_DEV_MODEL`
+  instead of the grading model (`gpt-6-luna`, the default). By default the
+  two are the same model, so this only matters if you set a different one
+  in `.env`. Grading uses the grading model.
 
 ```sh
 CS329Z_EVAL_SLICE=5 CS329Z_MODEL=dev uv run pytest tests/test_priority.py -m live
@@ -87,7 +88,7 @@ All model calls go through `cs329z_hw1.llm.LM`: a list of
 from cs329z_hw1.llm import LM
 
 lm = LM()        # the model named by CS329Z_MODEL ("grading" by default)
-dev = LM("dev")  # the development model, gpt-4o-mini
+judge = LM("judge")  # the evaluation's judge model, gpt-6-sol
 text = lm([{"role": "user", "content": "Say hello."}])
 ```
 
