@@ -1,8 +1,11 @@
 # CS329Z Assignment 1: Building an Agentic Harness
 
-This is the starter repository for Assignment 1. The handout (`hw1.pdf`, in
-this directory) states the problems. This file covers setup, the commands
-you will run, and where things are.
+This is the starter repository for Assignment 1.
+
+**Start by reading the handout, [`hw1.pdf`](hw1.pdf), in this directory.**
+It states every problem, what is graded, and the design decisions that
+are yours to make. Nothing in this README repeats it. This file covers
+setup, the commands you will run, and where things are.
 
 
 ## Setup
@@ -23,7 +26,7 @@ you will run, and where things are.
    cp .env.example .env
    ```
 
-   Open `.env` and fill in `OPENAI_API_KEY`. The file is gitignored. Do not
+   Open `.env` and fill in `OPENROUTER_API_KEY`. The file is gitignored. Do not
    commit it.
 
 
@@ -80,8 +83,8 @@ All model calls go through `cs329z_hw1.llm.LM`: a list of
 ```python
 from cs329z_hw1.llm import LM
 
-lm = LM()            # the grading model, gpt-6-luna
-judge = LM("judge")  # the evaluation's judge model, gpt-6-sol
+lm = LM()            # the grading model, openai/gpt-6-luna
+judge = LM("judge")  # the evaluation's judge model, openai/gpt-6-sol
 text = lm([{"role": "user", "content": "Say hello."}])
 ```
 

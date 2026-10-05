@@ -43,17 +43,27 @@ Message = dict  # {"role": "system" | "user" | "assistant", "content": str}
 # Model used for each role. Override any of these with the environment
 # variable CS329Z_<ROLE>_MODEL, e.g. CS329Z_GRADING_MODEL.
 DEFAULT_MODELS = {
-    "grading": "gpt-6-luna",  # the model your agent is graded with
-    "user": "gpt-6-luna",  # plays the simulated users
-    "judge": "gpt-6-sol",  # scores evaluation transcripts
+    "grading": "openai/gpt-6-luna",  # the model your agent is graded with
+    "user": "openai/gpt-6-luna",  # plays the simulated users
+    "judge": "openai/gpt-6-sol",  # scores evaluation transcripts
 }
+
+# Calls go to OpenRouter, which fronts many providers behind one
+# OpenAI-compatible API. Model names carry the provider as a prefix
+# ("openai/gpt-6-luna"); https://openrouter.ai/models lists them.
+OPENROUTER_URL = "https://openrouter.ai/api/v1"
 
 # Reasoning effort requested from models that accept it (GPT-5 and GPT-6).
 # Override with CS329Z_REASONING_EFFORT.
 DEFAULT_REASONING_EFFORT = "low"
 
-# USD per 1M tokens: (input, cached input, output). Standard tier,
-# https://developers.openai.com/api/docs/pricing, read 2026-09-30.
+# USD per 1M tokens: (input, cached input, output), keyed by the model name
+# without its provider prefix. OpenRouter reports the exact cost of each
+# call in the response, and the ledger records that; this table is the
+# fallback for a response without one, and it is checked when an LM is
+# created so that an unknown model fails before a paid call. Read from
+# https://openrouter.ai/models on 2026-10-05 (the same as OpenAI's list
+# prices).
 PRICES = {
     "gpt-4.1": (2.00, 0.50, 8.00),
     "gpt-4.1-mini": (0.40, 0.10, 1.60),
@@ -96,6 +106,7 @@ def resolve_model(role_or_model: str | None = None) -> str:
 
 
 def _price(model: str) -> tuple[float, float, float]:
+    model = model.rsplit("/", 1)[-1]  # "openai/gpt-6-luna" -> "gpt-6-luna"
     best = None
     for prefix, price in PRICES.items():
         if model == prefix or model.startswith(prefix + "-20"):
@@ -180,8 +191,8 @@ class LM:
     Parameters
     ----------
     model:
-        A role ("grading", "user", "judge"), a model name such as
-        "gpt-6-sol", or ``None`` for "grading".
+        A role ("grading", "user", "judge"), an OpenRouter model name such
+        as "openai/gpt-6-sol", or ``None`` for "grading".
     temperature, max_tokens:
         Sampling settings. They are part of the cache key. Reasoning models
         spend part of ``max_tokens`` on hidden reasoning, so keep it large.
@@ -239,7 +250,9 @@ class LM:
         start = time.time()
         text, usage = self._complete(messages)
         elapsed = time.time() - start
-        cost = cost_usd(self.model, usage["input"], usage["cached"], usage["output"])
+        cost = usage.get("cost")
+        if cost is None:
+            cost = cost_usd(self.model, usage["input"], usage["cached"], usage["output"])
         self.input_tokens += usage["input"]
         self.output_tokens += usage["output"]
         self.cost_usd += cost
@@ -301,32 +314,42 @@ class LM:
         if self._client is None:
             from openai import OpenAI
 
-            if not os.environ.get("OPENAI_API_KEY"):
+            key = os.environ.get("OPENROUTER_API_KEY")
+            if not key:
                 raise RuntimeError(
-                    "OPENAI_API_KEY is not set. Copy .env.example to .env and add your key."
+                    "OPENROUTER_API_KEY is not set. Copy .env.example to .env and add your key."
                 )
-            self._client = OpenAI(max_retries=6, timeout=120)
+            self._client = OpenAI(
+                base_url=OPENROUTER_URL,
+                api_key=key,
+                max_retries=6,
+                timeout=120,
+                default_headers={"X-Title": "CS329Z HW1"},
+            )
         kwargs: dict = {
             "model": self.model,
             "messages": messages,
-            "max_completion_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens,
+            # OpenRouter extensions: the reasoning effort, and the request
+            # that the response carry the cost of the call.
+            "extra_body": {"usage": {"include": True}},
         }
         if self.model not in _NO_TEMPERATURE:
             kwargs["temperature"] = self.temperature
         effort = os.environ.get("CS329Z_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
         if effort and self.model not in _NO_EFFORT:
-            kwargs["reasoning_effort"] = effort
+            kwargs["extra_body"]["reasoning"] = {"effort": effort}
         try:
             response = self._client.chat.completions.create(**kwargs)
-        except Exception as exc:  # some models reject temperature or reasoning_effort
+        except Exception as exc:  # some models reject temperature or reasoning effort
             text = str(exc)
             if "temperature" in text and "temperature" in kwargs:
                 _NO_TEMPERATURE.add(self.model)
                 kwargs.pop("temperature")
                 response = self._client.chat.completions.create(**kwargs)
-            elif "reasoning_effort" in text and "reasoning_effort" in kwargs:
+            elif "reasoning" in text and "reasoning" in kwargs["extra_body"]:
                 _NO_EFFORT.add(self.model)
-                kwargs.pop("reasoning_effort")
+                kwargs["extra_body"].pop("reasoning")
                 response = self._client.chat.completions.create(**kwargs)
             else:
                 raise
@@ -334,11 +357,15 @@ class LM:
         u = response.usage
         details = getattr(u, "prompt_tokens_details", None)
         cached = getattr(details, "cached_tokens", 0) or 0
-        return text, {
+        usage = {
             "input": u.prompt_tokens,
             "cached": cached,
             "output": u.completion_tokens,
         }
+        cost = getattr(u, "cost", None)  # OpenRouter's figure for this call
+        if isinstance(cost, (int, float)):
+            usage["cost"] = float(cost)
+        return text, usage
 
 
 class ScriptedLM:
