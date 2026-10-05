@@ -3,8 +3,8 @@
     uv run python -m cs329z_hw1.chat [--mode confirm|auto] [--memory-dir DIR] [--out DIR]
 
 This builds one session with ``cs329z_hw1.adapters.run_agent_session(LM(), None,
-config)``, so it runs your full Cardinal toolset on the model named by
-CS329Z_MODEL. You are the user: in confirm mode you are asked to approve
+config)``, so it runs your full Cardinal toolset on the grading model.
+You are the user: in confirm mode you are asked to approve
 tool calls, and ``ask_user`` questions are put to you. Type ``exit`` or
 press Ctrl-D to leave.
 

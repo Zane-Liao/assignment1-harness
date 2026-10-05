@@ -39,7 +39,7 @@ def main(argv=None) -> int:
     parser.add_argument("--only", default=None, help="run only personas whose id or category contains this text")
     parser.add_argument("--out", type=Path, default=None, help="directory for the records (default: runs/sim-<time>)")
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY, help="conversations run at the same time")
-    parser.add_argument("--model", default=None, help='agent model: "grading", "dev", or a model name (default: CS329Z_MODEL)')
+    parser.add_argument("--model", default=None, help='agent model: "grading" (default) or a model name')
     parser.add_argument("--salt", default=None, help="repeat the run without the cache: a string mixed into the cache keys of the agent and persona models (same as CS329Z_EVAL_SALT)")
     parser.add_argument("--adapters", default="cs329z_hw1.adapters", help="module that defines run_agent_session")
     parser.add_argument("--verbose", action="store_true", help="print the judge's reason for passed conversations too")

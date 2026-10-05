@@ -13,7 +13,6 @@ per persona. How a conversation is run and scored is documented in
 
 Environment variables for the live test:
     CS329Z_EVAL_SLICE=N        run only the first N personas
-    CS329Z_MODEL=dev           run your agent on the development model
     CS329Z_EVAL_CONCURRENCY=N  conversations run at the same time (default 4)
     CS329Z_EVAL_SALT=text      repeat the run without the cache
 """

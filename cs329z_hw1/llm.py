@@ -44,7 +44,6 @@ Message = dict  # {"role": "system" | "user" | "assistant", "content": str}
 # variable CS329Z_<ROLE>_MODEL, e.g. CS329Z_GRADING_MODEL.
 DEFAULT_MODELS = {
     "grading": "gpt-6-luna",  # the model your agent is graded with
-    "dev": "gpt-6-luna",  # the model CS329Z_MODEL=dev selects (same by default)
     "user": "gpt-6-luna",  # plays the simulated users
     "judge": "gpt-6-sol",  # scores evaluation transcripts
 }
@@ -85,12 +84,12 @@ class ScriptExhausted(RuntimeError):
 
 
 def resolve_model(role_or_model: str | None = None) -> str:
-    """Map a role ("grading", "dev", "user", "judge") to a model name.
+    """Map a role ("grading", "user", "judge") to a model name.
 
-    ``None`` means "whatever CS329Z_MODEL says" (default: "grading"). A string
-    that is not a role is returned unchanged, so you can pass a model name.
+    ``None`` means "grading". A string that is not a role is returned
+    unchanged, so you can pass a model name.
     """
-    name = role_or_model or os.environ.get("CS329Z_MODEL", "grading")
+    name = role_or_model or "grading"
     if name in DEFAULT_MODELS:
         return os.environ.get(f"CS329Z_{name.upper()}_MODEL", DEFAULT_MODELS[name])
     return name
@@ -181,9 +180,8 @@ class LM:
     Parameters
     ----------
     model:
-        A role ("grading", "dev", "user", "judge"), a model name, or ``None``
-        to use the role named by the CS329Z_MODEL environment variable
-        (default "grading").
+        A role ("grading", "user", "judge"), a model name such as
+        "gpt-6-sol", or ``None`` for "grading".
     temperature, max_tokens:
         Sampling settings. They are part of the cache key. Reasoning models
         spend part of ``max_tokens`` on hidden reasoning, so keep it large.

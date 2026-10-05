@@ -65,19 +65,12 @@ uv run pytest -m live                          # all live tests
 uv run pytest tests/test_priority.py -m live   # one problem
 ```
 
-Two environment variables make live runs cheaper while you iterate:
-
-- `CS329Z_EVAL_SLICE=N` runs each live test on its first N items only.
-- `CS329Z_MODEL=dev` runs your code on the model named by `CS329Z_DEV_MODEL`
-  instead of the grading model (`gpt-6-luna`, the default). By default the
-  two are the same model, so this only matters if you set a different one
-  in `.env`. Grading uses the grading model.
+While you iterate, `CS329Z_EVAL_SLICE=N` runs each live test on its first
+N items only. You can set it on the command line or in `.env`:
 
 ```sh
-CS329Z_EVAL_SLICE=5 CS329Z_MODEL=dev uv run pytest tests/test_priority.py -m live
+CS329Z_EVAL_SLICE=5 uv run pytest tests/test_priority.py -m live
 ```
-
-You can also set either variable in `.env`.
 
 ## Model calls and spending
 
@@ -87,7 +80,7 @@ All model calls go through `cs329z_hw1.llm.LM`: a list of
 ```python
 from cs329z_hw1.llm import LM
 
-lm = LM()        # the model named by CS329Z_MODEL ("grading" by default)
+lm = LM()            # the grading model, gpt-6-luna
 judge = LM("judge")  # the evaluation's judge model, gpt-6-sol
 text = lm([{"role": "user", "content": "Say hello."}])
 ```
@@ -106,17 +99,20 @@ The wrapper does three things:
   uv run python -m cs329z_hw1.llm
   ```
 
-- **Budget.** If `CS329Z_BUDGET_USD` is set (in `.env` or the environment),
-  the wrapper raises `BudgetExceeded` instead of making a call once the
-  ledger total has reached that amount. Cached replies are still returned.
+- **Budget.** The key we issue you has a spending limit on our side, and
+  calls fail once it is reached. `CS329Z_BUDGET_USD` (in `.env` or the
+  environment) is a second limit you set for yourself: once the ledger
+  total reaches it, the wrapper raises `BudgetExceeded` instead of making
+  a call, so a runaway loop stops before the key does. Cached replies are
+  still returned.
 
 Deleting `.lm_cache/` deletes both the cache and the ledger.
 
 ## How to work a problem
 
-Your code goes anywhere inside the `cs329z_hw1` package. The tests never
-import it directly. They call the functions in `cs329z_hw1/adapters.py`, which
-ship as stubs that raise `NotImplementedError`.
+Your code goes anywhere inside the `cs329z_hw1` package, and the tests
+reach it only through the functions in `cs329z_hw1/adapters.py`, which ship
+as stubs that raise `NotImplementedError`.
 
 For each problem:
 
@@ -133,7 +129,12 @@ For each problem:
        return classify_priority(email, lm)
    ```
 
-5. Run that problem's tests: deterministic first, then live.
+5. Run that problem's tests, deterministic first and then live.
+
+The deterministic tests are the complete list of the error handling we
+require (an empty reply, a reply in the wrong format, a cut-off tool call,
+a tool that raises). Nothing is graded that is not in a test or asked for
+in the design memo.
 
 The types that cross the adapter boundary (`Email`, `ToolSpec`, `ToolCall`,
 `ToolResult`, `ParsedResponse`, `AgentConfig`, `AgentResult`, and others) are
@@ -141,10 +142,10 @@ defined in `cs329z_hw1/types.py`. Use them as they are.
 
 ## Repository layout
 
-Files marked *provided* are course code. Read them, but do not edit them:
-grading uses the course's own copies. Files marked *read* hold interfaces
-you build on or rules the tests check; read each one before the problem
-that first uses it.
+Files marked *provided* are course code, which grading replaces with its
+own copies, so read them but do not edit them. Files marked *read* define
+interfaces you build on or rules the tests check, and each is worth
+reading before the problem that first uses it.
 
 ```
 README.md  pyproject.toml  .env.example

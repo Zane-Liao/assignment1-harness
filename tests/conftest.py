@@ -44,8 +44,7 @@ def canned_aux():
 
 @pytest.fixture
 def live_lm(request):
-    """The real model for live tests. CS329Z_MODEL picks the role
-    ("grading" by default, "dev" for the cheaper development model)."""
+    """The real model for live tests: the grading model."""
     return LM(None, tag=_tag(request))
 
 

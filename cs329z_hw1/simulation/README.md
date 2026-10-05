@@ -10,7 +10,7 @@ user and the judge receive.
 ```
 uv run pytest tests/test_sim_eval.py                 # one scripted conversation, no model calls
 uv run pytest tests/test_sim_eval.py -m live -s      # all public personas, live
-CS329Z_EVAL_SLICE=3 CS329Z_MODEL=dev uv run pytest tests/test_sim_eval.py -m live -s
+CS329Z_EVAL_SLICE=3 uv run pytest tests/test_sim_eval.py -m live -s
 
 uv run python -m cs329z_hw1.simulation --slice 3     # same run from the command line
 uv run python -m cs329z_hw1.simulation --only memory # personas whose id or category contains "memory"
@@ -31,11 +31,11 @@ the cache. A change to your agent's system prompt or to a tool description
 changes the first message of every agent call, so every conversation runs
 again and is charged.
 
-`CS329Z_MODEL` (or `--model`) changes only the models your agent uses: its
-own turns and `aux_lm`. The simulated user always runs on the "user" model
-and the judge on the "judge" model (see `cs329z_hw1/llm.py`). The judge is
-the most expensive model of the three per token, so on the development model
-the judge is the largest single part of the cost of a run.
+`--model` changes only the models your agent uses: its own turns and
+`aux_lm`. The simulated user always runs on the "user" model and the judge
+on the "judge" model (see `cs329z_hw1/llm.py`). The judge is the most
+expensive model of the three per token and the largest single part of the
+cost of a run.
 
 Model calls go through the cached `LM`. If your agent's calls are unchanged,
 the persona's replies and the judge's verdict come from the cache and a

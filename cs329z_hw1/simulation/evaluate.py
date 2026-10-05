@@ -29,7 +29,7 @@ def adapter_agent_factory(adapters, model: Optional[str] = None) -> AgentFactory
     with the full Cardinal toolset (``tools=None``).
 
     ``adapters`` is the ``cs329z_hw1.adapters`` module. ``model`` is a role or
-    model name for the agent; None reads CS329Z_MODEL (default "grading").
+    model name for the agent; None means "grading".
     Each persona gets its own LM objects so cost can be reported per
     conversation. A second LM is passed as ``AgentConfig.aux_lm``.
     """
