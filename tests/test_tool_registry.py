@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from cs329z_hw1.types import ToolResult, ToolSpec
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.fixture_tools import DIRECTORY, FAIL_MESSAGE, TOOL_NAMES, make_fixture_tools
 
 

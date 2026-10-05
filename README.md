@@ -115,13 +115,13 @@ Deleting `.lm_cache/` deletes both the cache and the ledger.
 ## How to work a problem
 
 Your code goes anywhere inside the `cs329z_hw1` package. The tests never
-import it directly. They call the functions in `tests/adapters.py`, which
+import it directly. They call the functions in `cs329z_hw1/adapters.py`, which
 ship as stubs that raise `NotImplementedError`.
 
 For each problem:
 
 1. Read the problem in the handout.
-2. Open the adapter it names in `tests/adapters.py`. The adapter's type
+2. Open the adapter it names in `cs329z_hw1/adapters.py`. The adapter's type
    hints and docstring are the exact signature the tests use.
 3. Implement the functionality in your package, for example in
    `cs329z_hw1/pipelines/priority.py`.
@@ -148,7 +148,10 @@ that first uses it.
 
 ```
 README.md  pyproject.toml  .env.example
-cs329z_hw1/
+cs329z_hw1/                               your package: every file you write goes here
+  adapters.py           yours     read  the only file the tests call; starts as stubs
+  pipelines/            yours           Part 1 (starts empty)
+  agent/                yours           Part 2 (starts empty)
   llm.py                provided  read  LM, ScriptedLM, cache, ledger, budget
   types.py              provided  read  data types shared by your code and the tests
   tokens.py             provided  read  count_tokens, count_message_tokens (4 characters per token)
@@ -159,10 +162,7 @@ cs329z_hw1/
   user.py               provided  read  UserIO, ScriptedUser, ConsoleUser
   chat.py               provided        terminal chat with your agent
   simulation/           provided        simulated users, judge, evaluation runner (see its README.md)
-  pipelines/            yours           Part 1 (starts empty)
-  agent/                yours           Part 2 (starts empty)
-tests/
-  adapters.py           yours     read  the only file connecting your code to the tests
+tests/                                    provided: read, do not edit; discarded at grading
   conftest.py           provided
   helpers.py            provided
   thresholds.py         provided        pass thresholds for the live tests
@@ -178,8 +178,11 @@ data/
 ```
 
 
-You may add files and subpackages inside `cs329z_hw1/`. Do not add
-dependencies to `pyproject.toml`.
+You may add files and subpackages inside `cs329z_hw1/`. Grading copies
+your whole `cs329z_hw1/` package into a clean starter and discards
+everything else, so a helper you put under `tests/` or anywhere outside the
+package is not there when we grade. Do not add dependencies to
+`pyproject.toml`.
 
 ## The terminal sandbox
 

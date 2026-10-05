@@ -69,7 +69,7 @@ questions and answers.
    `user` set to a `PersonaUser`, `memory_dir`, `workspace`, and the limits
    defined at the top of `runner.py` (`max_turns=20`, `token_budget=400000`,
    `context_budget=16000`). It calls
-   `tests.adapters.run_agent_session(lm, None, config)`, so your agent runs
+   `cs329z_hw1.adapters.run_agent_session(lm, None, config)`, so your agent runs
    with the full Cardinal toolset.
 3. The persona sends its opening message with `session.send(...)`. After each
    reply the persona model decides to continue with another message, to stop

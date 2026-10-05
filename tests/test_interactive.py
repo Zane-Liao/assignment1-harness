@@ -30,7 +30,7 @@ import pytest
 
 from cs329z_hw1.types import AgentConfig, AgentResult, Approval, ToolCall
 from cs329z_hw1.user import ScriptedUser
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.fixture_tools import DIRECTORY, make_fixture_tools
 from tests.helpers import events
 

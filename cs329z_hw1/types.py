@@ -1,7 +1,7 @@
 """Course-provided data types shared by your code and our tests.
 
 You may add your own types anywhere in the package. The ones below are the
-types that cross the boundary in ``tests/adapters.py``, so use them as they
+types that cross the boundary in ``cs329z_hw1/adapters.py``, so use them as they
 are (do not rename fields).
 """
 
@@ -10,6 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Literal, Optional, TypedDict
+
+
+Message = dict  # {"role": "system" | "user" | "assistant", "content": str}
+
+# Every model the tests hand you has this shape: a list of messages in, the
+# reply text out. ``cs329z_hw1.llm.LM`` and ``ScriptedLM`` are both one of
+# these. There is no tool-calling or structured-output feature behind it.
+LMCallable = Callable[[list[Message]], str]
 
 
 class Email(TypedDict):

@@ -26,7 +26,7 @@ def scripted():
         lm = scripted([{"text": "Looking.", "tool_call": {"name": "echo", "args": {"x": 1}}},
                        "The answer is 1."])
     """
-    from tests import adapters
+    from cs329z_hw1 import adapters
 
     def make(script, *, repeat_last: bool = False) -> ScriptedLM:
         return ScriptedLM(script, formatter=adapters.run_format_tool_call, repeat_last=repeat_last)

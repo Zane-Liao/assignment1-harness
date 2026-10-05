@@ -6,7 +6,7 @@
     uv run python -m cs329z_hw1.simulation --rescore runs/sim-20261001-120000
 
 Run it from the repository root. It plays each persona against the agent
-behind ``tests/adapters.py:run_agent_session``, prints one row per persona,
+behind ``cs329z_hw1/adapters.py:run_agent_session``, prints one row per persona,
 and saves every conversation record as JSON under ``runs/``.
 """
 
@@ -41,7 +41,7 @@ def main(argv=None) -> int:
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY, help="conversations run at the same time")
     parser.add_argument("--model", default=None, help='agent model: "grading", "dev", or a model name (default: CS329Z_MODEL)')
     parser.add_argument("--salt", default=None, help="repeat the run without the cache: a string mixed into the cache keys of the agent and persona models (same as CS329Z_EVAL_SALT)")
-    parser.add_argument("--adapters", default="tests.adapters", help="module that defines run_agent_session")
+    parser.add_argument("--adapters", default="cs329z_hw1.adapters", help="module that defines run_agent_session")
     parser.add_argument("--verbose", action="store_true", help="print the judge's reason for passed conversations too")
     parser.add_argument("--rescore", type=Path, default=None, help="score the saved records in this directory again without running the agent")
     args = parser.parse_args(argv)
@@ -76,7 +76,7 @@ def main(argv=None) -> int:
         print(format_table(records, verbose=args.verbose))
         return 0
 
-    sys.path.insert(0, os.getcwd())  # so that "tests.adapters" resolves from the repository root
+    sys.path.insert(0, os.getcwd())  # so that "cs329z_hw1.adapters" resolves from the repository root
     adapters = importlib.import_module(args.adapters)
     out_dir = args.out or new_run_dir()
     records = run_eval(

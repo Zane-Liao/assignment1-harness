@@ -1,18 +1,20 @@
 """Tests for problem (search_docs).
 
-The deterministic tests call ``run_search_docs`` and ``run_read_doc`` directly
-and compare what they return with the files in ``data/docs/``.
+The deterministic tests build one index with
+``run_build_doc_index(data.load_docs())``, call ``run_search_docs`` and
+``run_read_doc`` on it directly, and compare what they return with the files
+in ``data/docs/``.
 
 Rules the deterministic tests check:
 
-* ``run_search_docs(query, k)`` returns a list of at most k dicts with the
+* ``run_search_docs(index, query, k)`` returns a list of at most k dicts with the
   keys doc_id, title, snippet. doc_id and title are those of a real document
   (see ``cs329z_hw1.data.load_docs``). A query that matches nothing returns [].
   Two results may come from the same document (for example two passages of
   it), and a result may carry keys besides these three.
 * A snippet is at most SNIPPET_MAX_TOKENS tokens and contains text from its
   document.
-* ``run_read_doc(doc_id, start_line)`` returns a window that starts at
+* ``run_read_doc(index, doc_id, start_line)`` returns a window that starts at
   start_line. Its text is exactly lines start_line..end_line of the file
   (1-based, inclusive), joined by newlines, and is at most WINDOW_MAX_TOKENS
   tokens. Reading again from end_line + 1 continues without a gap, and the
@@ -34,7 +36,7 @@ from cs329z_hw1 import data
 from cs329z_hw1.tokenizer import tokenize
 from cs329z_hw1.tokens import count_tokens
 from cs329z_hw1.types import AgentConfig
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
 from tests.helpers import contains_any, events, load_fixture
 from tests.thresholds import SEARCH_DOCS_MAX_RESULT_TOKENS, SEARCH_DOCS_MIN_ACCURACY
@@ -58,8 +60,18 @@ def docs_by_id() -> dict[str, dict]:
     return {d["doc_id"]: d for d in data.load_docs()}
 
 
+_index_cache: dict = {}
+
+
+def doc_index():
+    """One index for the whole module, built by the student's adapter."""
+    if "index" not in _index_cache:
+        _index_cache["index"] = adapters.run_build_doc_index(data.load_docs())
+    return _index_cache["index"]
+
+
 def search(query: str, k: int = 5) -> list[dict]:
-    results = adapters.run_search_docs(query, k)
+    results = adapters.run_search_docs(doc_index(), query, k)
     assert isinstance(results, list), (
         f"run_search_docs({query!r}, {k}) must return a list, got {type(results).__name__}"
     )
@@ -176,7 +188,7 @@ def test_search_is_stable():
 
 
 def read(doc_id: str, start_line: int = 1) -> dict:
-    window = adapters.run_read_doc(doc_id, start_line)
+    window = adapters.run_read_doc(doc_index(), doc_id, start_line)
     assert isinstance(window, dict) and {"doc_id", "start_line", "end_line", "total_lines", "text"} <= set(window), (
         f"run_read_doc must return a dict with the keys doc_id, start_line, end_line, "
         f"total_lines, text; got {window!r}"
@@ -213,14 +225,14 @@ def check_window(window: dict, doc: dict, start_line: int) -> None:
 
 
 def test_read_doc_first_window():
-    adapters.run_read_doc("employee-handbook", 1)  # stub check before anything else
+    adapters.run_read_doc(doc_index(), "employee-handbook", 1)  # stub check before anything else
     for doc in data.load_docs():
         check_window(read(doc["doc_id"], 1), doc, 1)
 
 
 def test_read_doc_default_start_line_is_1():
     doc = docs_by_id()["employee-handbook"]
-    window = adapters.run_read_doc("employee-handbook")
+    window = adapters.run_read_doc(doc_index(), "employee-handbook")
     check_window(window, doc, 1)
 
 
@@ -243,7 +255,7 @@ def test_long_document_needs_several_windows():
 def test_consecutive_windows_cover_the_document_without_gaps():
     """Start at line 1 and keep reading from end_line + 1. Every window is
     valid, and the last one ends at total_lines."""
-    adapters.run_read_doc("employee-handbook", 1)  # stub check before anything else
+    adapters.run_read_doc(doc_index(), "employee-handbook", 1)  # stub check before anything else
     for doc in data.load_docs():
         total = len(doc["text"].splitlines())
         start, collected, windows = 1, [], 0
@@ -262,21 +274,21 @@ def test_consecutive_windows_cover_the_document_without_gaps():
 @pytest.mark.parametrize("start_line", [0, -3, 100_000])
 def test_start_line_outside_the_document_raises(start_line):
     with pytest.raises((ValueError, LookupError)):
-        adapters.run_read_doc("employee-handbook", start_line)
+        adapters.run_read_doc(doc_index(), "employee-handbook", start_line)
 
 
 def test_start_line_one_past_the_end_raises():
     total = len(docs_by_id()["pto-policy"]["text"].splitlines())
-    adapters.run_read_doc("pto-policy", total)  # the last line is valid
+    adapters.run_read_doc(doc_index(), "pto-policy", total)  # the last line is valid
     with pytest.raises((ValueError, LookupError)):
-        adapters.run_read_doc("pto-policy", total + 1)
+        adapters.run_read_doc(doc_index(), "pto-policy", total + 1)
 
 
 @pytest.mark.parametrize("doc_id", ["no-such-document", "", "employee-handbook.md", "EMPLOYEE-HANDBOOK"])
 def test_unknown_doc_id_raises(doc_id):
     """doc_id is the file name without .md, compared exactly."""
     with pytest.raises((ValueError, LookupError)):
-        adapters.run_read_doc(doc_id, 1)
+        adapters.run_read_doc(doc_index(), doc_id, 1)
 
 
 def test_read_doc_is_stable():
@@ -325,7 +337,7 @@ def test_live_doc_questions(live_lm, live_aux, tmp_path):
             "calls": len(events(session.transcript, "tool_call")),
         }
 
-    adapters.run_search_docs("policy", 1)  # stub check before any thread starts
+    adapters.run_search_docs(doc_index(), "policy", 1)  # stub check before any thread starts
     with ThreadPoolExecutor(max_workers=LIVE_WORKERS) as pool:
         rows = list(pool.map(ask, questions))
 

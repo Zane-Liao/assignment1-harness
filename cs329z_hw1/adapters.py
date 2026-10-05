@@ -5,11 +5,17 @@ functionality anywhere you like inside the ``cs329z_hw1`` package and replace
 the stub's body with a call into your code. Keep the signatures exactly as
 they are: the tests call these functions and nothing else of yours.
 
+Grading copies your whole ``cs329z_hw1/`` package into a clean copy of the
+starter and discards everything else. Any helper you write must live inside
+this package; a file under ``tests/`` or at the repository root is not
+graded.
+
 The types named here (Email, ToolSpec, ToolCall, ToolResult, ParsedResponse,
 AgentConfig, AgentResult, SearchResult, DocWindow) are defined in
-``cs329z_hw1/types.py``. ``lm`` is always a callable that takes a list of
-``{"role", "content"}`` messages and returns a string: a real ``LM`` in the
-live tests and a ``ScriptedLM`` in the deterministic tests.
+``cs329z_hw1/types.py``. ``lm`` is always an ``LMCallable``: it takes a list
+of ``{"role", "content"}`` messages and returns a string, and nothing else.
+It is a real ``LM`` in the live tests and a ``ScriptedLM`` in the
+deterministic tests.
 """
 
 from __future__ import annotations
@@ -20,6 +26,7 @@ from cs329z_hw1.types import (
     AgentConfig,
     DocWindow,
     Email,
+    LMCallable,
     ParsedResponse,
     SearchResult,
     ToolCall,
@@ -31,23 +38,24 @@ from cs329z_hw1.types import (
 # ======================================================================
 
 
-def run_priority(email: Email, lm: Callable) -> dict:
+def run_priority(email: Email, lm: LMCallable) -> dict:
     """Problem (priority).
 
     Classify one email for its recipient, calling the model through ``lm``.
     Return {"category": "urgent" | "normal" | "ignore", "reason": str}.
 
     Rules the tests check:
-    * ``category`` is one of the three lower-case labels and ``reason`` is a
-      non-empty string for every model reply, including an empty reply or
-      one that does not follow the format you asked for.
+    * Whatever the model replies, including nothing at all or text in the
+      wrong format, ``category`` is one of the three lower-case labels and
+      ``reason`` is a non-empty string. A fallback label for a reply you
+      cannot parse is fine.
     * The function does not raise and does not modify ``email``.
     * Live: at least 85% agreement with tests/fixtures/priority_gold.json.
     """
     raise NotImplementedError
 
 
-def run_daily_digest(emails: list[Email], lm: Callable) -> str:
+def run_daily_digest(emails: list[Email], lm: LMCallable) -> str:
     """Problem (daily_digest).
 
     ``emails`` is a list of emails from one calendar day (UTC date); it may
@@ -82,7 +90,8 @@ def run_bm25_search(index: Any, query: str, k: int) -> list[tuple[int, float]]:
     """Problem (bm25).
 
     Return the top-k ``(doc_id, score)`` pairs for ``query`` as
-    ``(int, float)`` tuples, best first, ties broken by lower doc_id.
+    ``(int, float)`` tuples, best first, ties broken by lower doc_id (the
+    document's position in the ``docs`` list given to ``run_bm25_build``).
 
     Rules the tests check:
     * Scores follow the handout's formula (k1 = 1.5, b = 0.75, Lucene IDF)
@@ -101,7 +110,7 @@ def run_bm25_search(index: Any, query: str, k: int) -> list[tuple[int, float]]:
 def run_email_qa(
     question: str,
     search: Callable[[str, int], list[Email]],
-    lm: Callable,
+    lm: LMCallable,
 ) -> dict:
     """Problem (email_qa).
 
@@ -200,7 +209,7 @@ def run_format_tool_call(text: str, call: ToolCall) -> str:
 
 
 def run_agent_session(
-    lm: Callable,
+    lm: LMCallable,
     tools: Optional[list[ToolSpec]],
     config: AgentConfig,
 ) -> Any:
@@ -312,8 +321,21 @@ def run_agent_session(
     raise NotImplementedError
 
 
-def run_search_docs(query: str, k: int = 5) -> list[SearchResult]:
-    """Problem (search_docs). Search the documents in data/docs/.
+def run_build_doc_index(docs: list[dict]) -> Any:
+    """Problem (search_docs). Index the company documents.
+
+    ``docs`` is what ``cs329z_hw1.data.load_docs()`` returns: one dict per
+    document with ``doc_id``, ``title``, and ``text``. Return whatever
+    ``run_search_docs`` and ``run_read_doc`` need (your BM25 index over
+    documents or chunks, plus the texts). The tests build it once and pass
+    it to both; your ``search_docs`` and ``read_doc`` tools should build it
+    the first time a tool needs it and share it.
+    """
+    raise NotImplementedError
+
+
+def run_search_docs(index: Any, query: str, k: int = 5) -> list[SearchResult]:
+    """Problem (search_docs). Search the documents in ``index``.
 
     Rules the tests check:
     * Returns a list of at most k dicts with the keys doc_id, title,
@@ -329,8 +351,8 @@ def run_search_docs(query: str, k: int = 5) -> list[SearchResult]:
     raise NotImplementedError
 
 
-def run_read_doc(doc_id: str, start_line: int = 1) -> DocWindow:
-    """Problem (search_docs). Read a bounded window of one document.
+def run_read_doc(index: Any, doc_id: str, start_line: int = 1) -> DocWindow:
+    """Problem (search_docs). Read a bounded window of one document in ``index``.
 
     Lines are those of ``text.splitlines()`` for the document's text in
     ``cs329z_hw1.data.load_docs()``, numbered from 1.

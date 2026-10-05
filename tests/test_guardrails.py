@@ -28,7 +28,7 @@ import pytest
 
 from cs329z_hw1.types import AgentConfig, AgentResult, Approval, ToolCall
 from cs329z_hw1.user import ScriptedUser
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
 from tests.helpers import contains_any, events, load_fixture
 from tests.thresholds import GUARDRAILS_MIN_ANSWERED_FRACTION

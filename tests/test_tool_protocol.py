@@ -14,7 +14,7 @@ import jsonschema
 import pytest
 
 from cs329z_hw1.types import ParsedResponse, ToolCall
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
 from tests.fixture_tools import TOOL_NAMES, make_fixture_tools
 from tests.helpers import load_fixture

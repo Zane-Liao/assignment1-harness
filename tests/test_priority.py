@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from cs329z_hw1.llm import ScriptedLM
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
 from tests.helpers import load_fixture
 from tests.thresholds import PRIORITY_MIN_ACCURACY

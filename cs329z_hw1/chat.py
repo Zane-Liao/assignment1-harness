@@ -2,7 +2,7 @@
 
     uv run python -m cs329z_hw1.chat [--mode confirm|auto] [--memory-dir DIR] [--out DIR]
 
-This builds one session with ``tests.adapters.run_agent_session(LM(), None,
+This builds one session with ``cs329z_hw1.adapters.run_agent_session(LM(), None,
 config)``, so it runs your full Cardinal toolset on the model named by
 CS329Z_MODEL. You are the user: in confirm mode you are asked to approve
 tool calls, and ``ask_user`` questions are put to you. Type ``exit`` or
@@ -22,7 +22,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # so `tests.adapters` imports from any directory
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # so `cs329z_hw1.adapters` imports from any directory
 
 from cs329z_hw1.llm import LM
 from cs329z_hw1.types import AgentConfig
@@ -36,7 +36,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("runs"), help="where to save the conversation")
     args = parser.parse_args()
 
-    from tests import adapters  # your wiring
+    from cs329z_hw1 import adapters  # your wiring
 
     config = AgentConfig(
         mode=args.mode,

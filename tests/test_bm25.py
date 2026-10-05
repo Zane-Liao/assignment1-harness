@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.helpers import load_fixture
 
 # Limits for the full archive. The time limits are about four times what the

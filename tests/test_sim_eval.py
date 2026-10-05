@@ -36,7 +36,8 @@ from cs329z_hw1.simulation import (
 )
 from cs329z_hw1.simulation.evaluate import DEFAULT_CONCURRENCY, EVAL_SIZE, new_run_dir
 from cs329z_hw1.simulation.record import tool_calls
-from tests import adapters, thresholds
+from cs329z_hw1 import adapters
+from tests import thresholds
 from tests.conftest import eval_slice
 from tests.fixture_tools import DIRECTORY, make_fixture_tools
 from tests.helpers import FIXTURES

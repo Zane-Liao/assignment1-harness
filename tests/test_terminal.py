@@ -27,7 +27,7 @@ import pytest
 
 from cs329z_hw1.tokens import count_message_tokens, count_tokens
 from cs329z_hw1.types import AgentConfig, AgentResult
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
 from tests.helpers import FIXTURES, contains_any, events, load_fixture
 from tests.thresholds import TERMINAL_MIN_CORRECT_FRACTION

@@ -18,7 +18,7 @@ import pytest
 from cs329z_hw1.llm import ScriptExhausted
 from cs329z_hw1.tokens import count_message_tokens, count_tokens
 from cs329z_hw1.types import AgentConfig, AgentResult, ToolCall
-from tests import adapters
+from cs329z_hw1 import adapters
 from tests.fixture_tools import DIRECTORY, FAIL_MESSAGE, TOOL_NAMES, make_fixture_tools
 from tests.helpers import events
 
