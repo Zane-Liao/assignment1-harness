@@ -255,13 +255,12 @@ def run_agent_session(
     ``cs329z_hw1/types.py``.
 
     (agent_loop)
-    * ``send`` does not raise for anything the model or a tool does. A
-      call that raises ``OutputTruncated`` (the reply was cut off at
-      max_tokens) is handled: the transcript gets an "error" event with
-      non-empty content and the run continues, by sending that text back
-      to the model or by calling again with a larger max_tokens. Any other
-      exception raised by ``lm`` propagates (an exception inside a tool
-      function is a "tool_error" like any other).
+    * ``send`` does not raise for anything the model writes or a tool
+      does. A model call that raises ``OutputTruncated`` counts as a
+      malformed reply: the transcript gets an "error" event with non-empty
+      content and the run continues. Other exceptions raised by ``lm``
+      propagate (an exception inside a tool function is a "tool_error"
+      like any other).
       ``AgentResult.text`` is never empty, and
       ``AgentResult.transcript`` is a copy of the transcript at that moment.
     * Messages sent to ``lm`` use only the roles system, user, assistant.

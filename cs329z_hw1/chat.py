@@ -59,11 +59,7 @@ def main() -> None:
             break
         if not message:
             continue
-        try:
-            result = session.send(message)
-        except Exception as exc:  # a provider error or the budget stop: the session is intact
-            print(f"\n[model call failed: {type(exc).__name__}: {exc}]\nYour session is intact; try again or exit.")
-            continue
+        result = session.send(message)
         note = "" if result.status == "done" else f" [stopped: {result.status}]"
         print(f"\nagent{note}> {result.text}")
         turns.append({"user": message, "agent": result.text, "status": result.status})

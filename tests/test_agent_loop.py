@@ -326,11 +326,9 @@ def test_malformed_reply_then_recovery(scripted, kind):
 
 def test_reply_cut_off_at_max_tokens_then_recovery(scripted):
     """The first model call raises OutputTruncated (the model stopped at
-    max_tokens), then a valid call, then an answer. send must not raise: the
-    transcript gets an error event for the cut-off reply, and the run ends
-    with status done. Whether the loop sends the error back to the model or
-    calls again with a larger max_tokens is yours; either way the next
-    scripted reply is the valid call."""
+    max_tokens), then a valid call, then an answer. A cut-off reply is a
+    malformed reply: send must not raise, the transcript gets an error event
+    for it, and the run ends with status done."""
     lm = scripted([truncated("I will call echo with"), call("echo", text="recovered"), "Recovered and finished."])
     session, fx = make_session(lm)
     result = send(session, "Do the task.")
