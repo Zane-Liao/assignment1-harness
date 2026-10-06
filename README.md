@@ -91,6 +91,7 @@ uv run python -m cs329z_hw1.show digest 2001-06-22 --labels --limit 30   # the d
 uv run python -m cs329z_hw1.show bm25 "larchfield audit"                 # top emails for a query, with scores
 uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
 uv run python -m cs329z_hw1.show search_docs "parental leave"
+uv run python -m cs329z_hw1.show memory                                   # each persona's memory after an evaluation run
 ```
 
 Each prints the result and the cost and time of the model calls. A repeat
