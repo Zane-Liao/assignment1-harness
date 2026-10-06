@@ -1,6 +1,6 @@
 [project]
 name = "cs329z-hw1"
-version = "26.5.0"
+version = "26.1.0"
 description = "CS329Z Assignment 1: Building an Agentic Harness"
 requires-python = ">=3.11"
 dependencies = [
