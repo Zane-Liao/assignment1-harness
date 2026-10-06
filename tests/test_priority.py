@@ -107,7 +107,9 @@ def test_live_accuracy(live_lm):
                 f"subject={item['email']['subject'][:50]!r}"
             )
     correct = len(gold) - len(wrong)
-    print(f"priority accuracy: {correct} of {len(gold)}")
+    print(f"priority accuracy: {correct} of {len(gold)} (run with -s to see this when the test passes)")
+    if wrong:
+        print("disagreements:\n" + "\n".join(wrong))
     assert correct / len(gold) >= PRIORITY_MIN_ACCURACY, (
         f"{correct} of {len(gold)} emails match the gold label "
         f"({correct / len(gold):.0%}); at least {PRIORITY_MIN_ACCURACY:.0%} is required. "

@@ -155,6 +155,8 @@ def test_live_accuracy(archive, live_lm):
         subset = [(i, r) for i, r in pairs if i["hops"] == hops]
         print(f"email_qa {hops}-hop: {sum(is_correct(i, r) for i, r in subset)} of {len(subset)}")
     print(f"email_qa accuracy: {correct} of {len(pairs)}")
+    if wrong:
+        print("wrong answers:\n" + "\n".join(wrong))
     assert correct / len(pairs) >= EMAIL_QA_MIN_ACCURACY, (
         f"{correct} of {len(pairs)} answers are correct ({correct / len(pairs):.0%}); "
         f"at least {EMAIL_QA_MIN_ACCURACY:.0%} is required. Wrong answers:\n" + "\n".join(wrong)
@@ -174,6 +176,8 @@ def test_live_support(archive, live_lm):
         if not set(result.get("support") or []) & set(item["support"])
     ]
     print(f"email_qa support: {len(answered) - len(missing)} of {len(answered)} correct answers cite a gold email")
+    if missing:
+        print("missing support:\n" + "\n".join(missing))
     assert answered, "No question was answered correctly, so there is no support to check."
     assert not missing, (
         f"{len(missing)} of {len(answered)} correct answers cite no gold email:\n"

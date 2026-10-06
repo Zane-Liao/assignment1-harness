@@ -109,6 +109,8 @@ def live_digests(archive, lm) -> list[tuple[dict, str]]:
 
 def report(what: str, problems: list[str], n: int) -> None:
     print(f"digest {what}: {n - len({p.split(':')[0] for p in problems})} of {n} days pass")
+    if problems:
+        print("problems:\n" + "\n".join(problems))
     assert not problems, f"Digest {what} check failed:\n" + "\n".join(problems)
 
 

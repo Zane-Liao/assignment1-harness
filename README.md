@@ -64,15 +64,20 @@ uv run pytest tests/test_priority.py   # one problem
 thresholds in `tests/thresholds.py`. They cost money.
 
 ```sh
-uv run pytest -m live                          # all live tests
-uv run pytest tests/test_priority.py -m live   # one problem
+uv run pytest -m live -s                          # all live tests
+uv run pytest tests/test_priority.py -m live -s   # one problem
 ```
+
+A live test takes from a few seconds to a few minutes (`priority` makes 60
+model calls, about a minute), and pytest prints nothing while it waits.
+`-s` makes each test print its score and the items your code got wrong,
+whether or not it passes.
 
 While you iterate, `CS329Z_EVAL_SLICE=N` runs each live test on its first
 N items only. You can set it on the command line or in `.env`:
 
 ```sh
-CS329Z_EVAL_SLICE=5 uv run pytest tests/test_priority.py -m live
+CS329Z_EVAL_SLICE=5 uv run pytest tests/test_priority.py -m live -s
 ```
 
 ## Model calls and spending
