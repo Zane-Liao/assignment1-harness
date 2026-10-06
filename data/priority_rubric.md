@@ -18,6 +18,7 @@ The recipient has to act or decide soon. Two things must both be true:
 2. There is time pressure: the email states or clearly implies that the
    action is needed the same day, the next working day, or by a stated
    deadline no more than two working days away.
+   A working day is Monday to Friday, counted from the email's date.
 
 Examples:
 

@@ -141,14 +141,18 @@ def run_tool_registry(tools: list[ToolSpec]) -> Any:
     """Problem (tool_registry).
 
     Return your registry populated with ``tools``, in that order. The tests
-    use two methods of the returned object:
+    use three methods of the returned object:
 
         registry.schemas() -> list[dict]
+        registry.validate(name: str, args: dict) -> ToolResult | None
         registry.execute(name: str, args: dict) -> ToolResult
 
     Rules the tests check:
     * ``schemas()`` has one dict per tool, in registration order, with
       exactly the keys "name", "description", "parameters".
+    * ``validate`` returns the "unknown_tool" or "invalid_args" result that
+      ``execute`` would return for the same call, or None if the call could
+      run. It never calls the tool and never raises.
     * ``execute`` never raises. Unknown name: status "unknown_tool".
       ``args`` that fail the tool's ``parameters`` JSON Schema: status
       "invalid_args", and the tool's function is not called. The function

@@ -1,7 +1,10 @@
 """Tests for problem (tool_registry). Deterministic: no model calls.
 
 The registry is built with ``run_tool_registry`` from the fixture tools in
-``tests/fixture_tools.py``. Each fixture tool records every time its function
+``tests/fixture_tools.py``. The tests use three of its methods: ``schemas()``,
+``validate(name, args)`` (a ToolResult with status unknown_tool or
+invalid_args, or None when the call could run; the tool is not called) and
+``execute(name, args)``. Each fixture tool records every time its function
 runs, so the tests can tell whether the registry executed a call.
 """
 
@@ -157,6 +160,69 @@ def test_side_effects_happen_on_ok():
     assert fx.notes == ["one", "two"], (
         f"expected write_note to have saved ['one', 'two'], got {fx.notes}"
     )
+
+
+# ------------------------------------------------------------ validate ----
+
+
+def validate(registry, name, args):
+    """Call registry.validate and check the shape of what comes back."""
+    try:
+        result = registry.validate(name, args)
+    except Exception as exc:
+        pytest.fail(
+            f"validate({name!r}, {args!r}) raised {type(exc).__name__}: {exc}. "
+            "validate must return a ToolResult or None and never raise.",
+            pytrace=False,
+        )
+    assert result is None or isinstance(result, ToolResult), (
+        f"validate({name!r}, {args!r}) must return None or a ToolResult, got {result!r}"
+    )
+    return result
+
+
+def test_validate_accepts_a_good_call_without_running_it():
+    """validate(name, args) returns None for a call that execute would run,
+    and does not call the tool."""
+    registry, fx = build()
+    assert validate(registry, "echo", {"text": "hi"}) is None
+    assert validate(registry, "add", {"a": 1, "b": 2}) is None
+    assert fx.calls == [], f"validate must not run the tool; recorded calls: {fx.calls}"
+
+
+def test_validate_rejects_an_unknown_tool():
+    registry, fx = build()
+    result = validate(registry, "no_such_tool", {"text": "hi"})
+    assert result is not None and result.status == "unknown_tool", (
+        f"validate of an unknown tool must return a ToolResult with status unknown_tool, got {result!r}"
+    )
+    assert result.content.strip()
+    assert fx.calls == []
+
+
+@pytest.mark.parametrize("name,args", [("add", {"a": 1}), ("echo", {"text": 5}), ("lookup", {"key": "not_a_key"})])
+def test_validate_rejects_invalid_args(name, args):
+    registry, fx = build()
+    result = validate(registry, name, args)
+    assert result is not None and result.status == "invalid_args", (
+        f"validate({name!r}, {args!r}) must return a ToolResult with status invalid_args, got {result!r}"
+    )
+    assert result.content.strip()
+    assert fx.calls == []
+
+
+def test_validate_and_execute_agree():
+    """execute rejects exactly the calls validate rejects, with the same status."""
+    registry, fx = build()
+    for name, args in [("echo", {"text": "hi"}), ("no_such_tool", {}), ("add", {"a": 1})]:
+        checked = validate(registry, name, args)
+        ran = execute(registry, name, args)
+        if checked is None:
+            assert ran.status == "ok", f"validate accepted {name}({args}) but execute returned {ran.status}"
+        else:
+            assert ran.status == checked.status, (
+                f"validate returned {checked.status} for {name}({args}) but execute returned {ran.status}"
+            )
 
 
 # -------------------------------------------------------- unknown_tool ----
