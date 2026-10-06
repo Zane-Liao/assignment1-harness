@@ -273,4 +273,5 @@ feedback on this assignment. In particular we would like to highlight Houjun
 preliminary version of the assignment and offering invaluable feedback.
 
 If you would like to use this assignment for your course you are welcome to
-do so with brief attribution (MIT license, see `LICENSE`).
+do so with brief attribution. It is released under the MIT license (see
+`LICENSE`).
