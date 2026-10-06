@@ -5,6 +5,7 @@
     uv run python -m cs329z_hw1.show bm25 "larchfield audit" [--k 5]    # search the archive with your index
     uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
     uv run python -m cs329z_hw1.show search_docs "parental leave" [--k 5]
+    uv run python -m cs329z_hw1.show memory [runs/sim-...]        # what each persona's memory holds after an evaluation
 
 Each command calls your adapters the way the tests do, on the grading model,
 and prints the result with the cost and time of the calls. Repeating a
@@ -20,6 +21,7 @@ the archive holds about 280 emails (the live tests use about 30 per day);
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -176,6 +178,29 @@ def show_search_docs(args) -> None:
         print(f"{paint(r['doc_id'], 'cyan')}  {paint('(' + r['title'] + ')', 'dim')}\n  {r['snippet']}\n")
 
 
+def show_memory(args) -> None:
+    """Every file in every persona's .memory/ directory of one evaluation
+    run (the latest under runs/ unless a directory is given)."""
+    run = Path(args.run) if args.run else max(Path("runs").glob("sim-*"), default=None, key=lambda p: p.stat().st_mtime)
+    if run is None or not run.is_dir():
+        sys.exit("No evaluation run found under runs/. Run the evaluation first.")
+    stores = sorted(run.glob("*.memory"))
+    print(paint(f"Memory after {run}: {len(stores)} personas\n", "bold"))
+    for store in stores:
+        files = sorted(f for f in store.rglob("*") if f.is_file())
+        print(f"{paint(store.name[:-len('.memory')], 'cyan')}  {paint('(empty)' if not files else '', 'dim')}")
+        for f in files:
+            text = f.read_text(encoding="utf-8", errors="replace")
+            try:
+                text = json.dumps(json.loads(text), indent=2, ensure_ascii=False)
+            except ValueError:
+                pass
+            print(paint(f"  {f.relative_to(store)}", "dim"))
+            for line in text.splitlines():
+                print(f"    {line}")
+        print()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run one of your Part 1 pipelines and print what it produces.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -194,6 +219,9 @@ def main() -> None:
     p = sub.add_parser("email_qa", help="answer a question over the archive")
     p.add_argument("question")
     p.set_defaults(fn=show_email_qa)
+    p = sub.add_parser("memory", help="each persona's memory store after an evaluation run")
+    p.add_argument("run", nargs="?", default=None, help="a runs/sim-* directory (default: the latest)")
+    p.set_defaults(fn=show_memory)
     p = sub.add_parser("search_docs", help="search the company documents")
     p.add_argument("query")
     p.add_argument("--k", type=int, default=5)
