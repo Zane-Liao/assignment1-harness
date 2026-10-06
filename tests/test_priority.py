@@ -12,7 +12,7 @@ from tests.conftest import eval_slice
 from tests.helpers import load_fixture
 from tests.thresholds import PRIORITY_MIN_ACCURACY
 
-CATEGORIES = ("urgent", "normal", "ignore")
+CATEGORIES = ("urgent", "normal", "ignore", "unknown")
 
 EMAILS = [
     {
@@ -38,7 +38,10 @@ EMAILS = [
 ]
 
 # The scripted model replies with these whatever your prompt asks for. None
-# of them is written in your format, except by coincidence.
+# of them is written in your format, except by coincidence. The replies in
+# NO_LABEL contain no label word at all, so they must give "unknown"; the
+# others may parse to a label or to "unknown", depending on the format your
+# prompt asked for.
 REPLIES = {
     "plain_word": "urgent",
     "upper_case": "IGNORE",
@@ -53,6 +56,7 @@ REPLIES = {
     "json_like": '{"category": "urgent", "reason": "deadline today"}',
     "long_multiline": "Let me think.\n\n" + "The sender wants something. " * 80 + "\n\nFinal: normal",
 }
+NO_LABEL = {"garbage", "empty", "whitespace", "refusal", "json_wrong_label"}
 
 
 def check_contract(result, reply: str) -> None:
@@ -79,6 +83,11 @@ def test_contract_holds_for_any_reply(name, email):
     result = adapters.run_priority(email, lm)
     check_contract(result, reply)
     assert len(lm.calls) >= 1, "run_priority should call the model at least once; it made no calls."
+    if name in NO_LABEL:
+        assert result["category"] == "unknown", (
+            f"The reply {reply[:60]!r} states no label, so category must be 'unknown', "
+            f"not a guess; got {result['category']!r}."
+        )
 
 
 def test_email_is_not_modified():
@@ -99,8 +108,11 @@ def test_live_accuracy(live_lm):
         results = list(pool.map(lambda item: adapters.run_priority(item["email"], live_lm), gold))
 
     wrong = []
+    unknown = []
     for item, result in zip(gold, results):
         check_contract(result, "(live model)")
+        if result["category"] == "unknown":
+            unknown.append(item["email"]["id"])
         if result["category"] != item["category"]:
             wrong.append(
                 f"  {item['email']['id']} gold={item['category']} yours={result['category']} "
@@ -110,6 +122,10 @@ def test_live_accuracy(live_lm):
     print(f"priority accuracy: {correct} of {len(gold)} (run with -s to see this when the test passes)")
     if wrong:
         print("disagreements:\n" + "\n".join(wrong))
+    assert not unknown, (
+        f"run_priority returned 'unknown' for {len(unknown)} of {len(gold)} emails: {unknown}. "
+        "With the real model every reply should state a label; check your prompt and parser."
+    )
     assert correct / len(gold) >= PRIORITY_MIN_ACCURACY, (
         f"{correct} of {len(gold)} emails match the gold label "
         f"({correct / len(gold):.0%}); at least {PRIORITY_MIN_ACCURACY:.0%} is required. "

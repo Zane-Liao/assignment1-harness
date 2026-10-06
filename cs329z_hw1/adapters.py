@@ -49,13 +49,15 @@ def run_priority(email: Email, lm: LMCallable) -> dict:
     """Problem (priority).
 
     Classify one email for its recipient, calling the model through ``lm``.
-    Return {"category": "urgent" | "normal" | "ignore", "reason": str}.
+    Return {"category": "urgent" | "normal" | "ignore" | "unknown", "reason": str}.
+    ``unknown`` means the reply stated no label.
 
     Rules the tests check:
-    * Whatever the model replies, including nothing at all or text in the
-      wrong format, ``category`` is one of the three lower-case labels and
-      ``reason`` is a non-empty string. A fallback label for a reply you
-      cannot parse is fine.
+    * Whatever the model replies, ``category`` is one of the four lower-case
+      values and ``reason`` is a non-empty string.
+    * A reply with no label word in it (empty, whitespace, text that names
+      none of the three) gives "unknown", not a guess.
+    * Live: the real model never gets "unknown".
     * The function does not raise and does not modify ``email``.
     * Live: at least 85% agreement with tests/fixtures/priority_gold.json.
     """
