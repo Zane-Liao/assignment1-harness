@@ -1,6 +1,6 @@
 """See what your Part 1 pipelines produce on real data (course-provided).
 
-    uv run python -m cs329z_hw1.show priority em-01553 [em-...]   # label one or more emails
+    uv run python -m cs329z_hw1.show priority em-12167 [em-...]   # label one or more emails
     uv run python -m cs329z_hw1.show digest 2001-06-22 [--labels] [--limit N]  # the digest for one day
     uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
     uv run python -m cs329z_hw1.show search_docs "parental leave" [--k 5]
