@@ -4,8 +4,8 @@ This is the starter repository for Assignment 1.
 
 **Start by reading the handout, [`hw1.pdf`](hw1.pdf), in this directory.**
 It states every problem, what is graded, and the design decisions that
-are yours to make. Nothing in this README repeats it. This file covers
-setup, the commands you will run, and where things are.
+are yours to make. This file covers setup, the commands you will run, and
+where things are.
 
 
 ## Setup
@@ -79,6 +79,21 @@ N items only. You can set it on the command line or in `.env`:
 ```sh
 CS329Z_EVAL_SLICE=5 uv run pytest tests/test_priority.py -m live -s
 ```
+
+## Seeing what your pipelines produce
+
+The tests report scores. To read the output itself, run a pipeline on real
+data:
+
+```sh
+uv run python -m cs329z_hw1.show priority em-01553 em-06665     # label and reason per email
+uv run python -m cs329z_hw1.show digest 2001-06-22 --labels     # the digest, plus each email's label
+uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
+uv run python -m cs329z_hw1.show search_docs "parental leave"
+```
+
+Each prints the result and the cost and time of the model calls. A repeat
+with unchanged code is free.
 
 ## Model calls and spending
 
@@ -170,6 +185,7 @@ cs329z_hw1/                               your package: every file you write goe
   cardinal.py           provided  read  names and argument schemas of the agent tools
   user.py               provided  read  UserIO, ScriptedUser, ConsoleUser
   chat.py               provided        terminal chat with your agent
+  show.py               provided        run one Part 1 pipeline on real data and print the result
   simulation/           provided        simulated users, judge, evaluation runner (see its README.md)
 tests/                                    provided: read, do not edit; discarded at grading
   conftest.py           provided
