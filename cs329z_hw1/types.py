@@ -3,6 +3,11 @@
 You may add your own types anywhere in the package. The ones below are the
 types that cross the boundary in ``cs329z_hw1/adapters.py``, so use them as they
 are (do not rename fields).
+
+Two kinds of type appear here. A ``TypedDict`` (Email, SearchResult,
+DocWindow) is a plain dict with named keys: read ``email["subject"]``, not
+``email.subject``. A ``dataclass`` (ToolSpec, ToolCall, ToolResult,
+AgentConfig, AgentResult, and the rest) is an object with attributes.
 """
 
 from __future__ import annotations
@@ -21,7 +26,8 @@ LMCallable = Callable[[list[Message]], str]
 
 
 class Email(TypedDict):
-    """One email from data/emails/emails.jsonl."""
+    """One email from data/emails/emails.jsonl, as a plain dict:
+    email["subject"], email["from"], email["to"]."""
 
     id: str  # "em-00001"
     thread_id: str  # "th-00001"
