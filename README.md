@@ -87,7 +87,7 @@ data:
 
 ```sh
 uv run python -m cs329z_hw1.show priority em-01553 em-06665     # label and reason per email
-uv run python -m cs329z_hw1.show digest 2001-06-22 --labels     # the digest, plus each email's label
+uv run python -m cs329z_hw1.show digest 2001-06-22 --labels --limit 30   # the digest, plus each label
 uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
 uv run python -m cs329z_hw1.show search_docs "parental leave"
 ```

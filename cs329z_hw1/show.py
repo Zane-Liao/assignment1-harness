@@ -1,7 +1,7 @@
 """See what your Part 1 pipelines produce on real data (course-provided).
 
     uv run python -m cs329z_hw1.show priority em-01553 [em-...]   # label one or more emails
-    uv run python -m cs329z_hw1.show digest 2001-06-22 [--labels] # the digest for one day
+    uv run python -m cs329z_hw1.show digest 2001-06-22 [--labels] [--limit N]  # the digest for one day
     uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
     uv run python -m cs329z_hw1.show search_docs "parental leave" [--k 5]
 
@@ -11,7 +11,9 @@ command with unchanged code is free, because the LM caches every reply.
 
 ``digest --labels`` also prints the label your run_priority gives each email
 of the day, so you can see which pile each one landed in. Those calls are
-the ones your digest already made, so they come from the cache.
+the ones your digest already made, so they come from the cache. A day of
+the archive holds about 280 emails (the live tests use about 30 per day);
+``--limit N`` runs the digest on the first N emails of the day.
 """
 
 from __future__ import annotations
@@ -65,10 +67,14 @@ def show_digest(args) -> None:
     emails = data.emails_on(args.date)
     if not emails:
         sys.exit(f"No emails on {args.date}. The archive covers 2001-06-01 to 2001-08-31.")
+    total = len(emails)
+    if args.limit:
+        emails = emails[: args.limit]
+    print(f"Running your digest on {len(emails)} of the {total} emails of {args.date}...", flush=True)
     lm = LM(tag="show/digest")
     started = time.time()
     digest = adapters.run_daily_digest(emails, lm)
-    print(f"Digest for {args.date} ({len(emails)} emails, {len(digest.split())} words):\n")
+    print(f"\nDigest for {args.date} ({len(emails)} emails, {len(digest.split())} words):\n")
     print(digest)
     if args.labels:
         print(f"\nLabels from your run_priority:")
@@ -122,6 +128,7 @@ def main() -> None:
     p = sub.add_parser("digest", help="the digest for one day, YYYY-MM-DD")
     p.add_argument("date")
     p.add_argument("--labels", action="store_true", help="also print each email's priority label")
+    p.add_argument("--limit", type=int, default=None, metavar="N", help="use only the first N emails of the day")
     p.set_defaults(fn=show_digest)
     p = sub.add_parser("email_qa", help="answer a question over the archive")
     p.add_argument("question")
