@@ -2,7 +2,7 @@
 
     uv run python -m cs329z_hw1.show priority em-12167 [em-...]   # label one or more emails
     uv run python -m cs329z_hw1.show digest 2001-06-22 [--labels] [--limit N]  # the digest for one day
-    uv run python -m cs329z_hw1.show bm25 "larchfield audit" [--k 10]   # search the archive with your index
+    uv run python -m cs329z_hw1.show bm25 "larchfield audit" [--k 5]    # search the archive with your index
     uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
     uv run python -m cs329z_hw1.show search_docs "parental leave" [--k 5]
 
@@ -110,7 +110,10 @@ def show_bm25(args) -> None:
     elapsed = (time.time() - started) * 1000
     print(f"bm25({args.query!r}, k={args.k}) -> {len(hits)} results in {elapsed:.1f} ms\n")
     for doc_id, score in hits:
-        print(f"{score:8.3f}  {_email_header(archive[doc_id])}")
+        email = archive[doc_id]
+        words = email["body"].split()
+        body = " ".join(words[:100]) + (" ..." if len(words) > 100 else "")
+        print(f"{score:8.3f}  {_email_header(email)}\n  {body}\n")
 
 
 def show_email_qa(args) -> None:
@@ -160,7 +163,7 @@ def main() -> None:
     p.set_defaults(fn=show_digest)
     p = sub.add_parser("bm25", help="search the archive with your BM25 index")
     p.add_argument("query")
-    p.add_argument("--k", type=int, default=10)
+    p.add_argument("--k", type=int, default=5)
     p.set_defaults(fn=show_bm25)
     p = sub.add_parser("email_qa", help="answer a question over the archive")
     p.add_argument("question")
