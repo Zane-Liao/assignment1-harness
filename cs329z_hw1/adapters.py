@@ -15,7 +15,14 @@ AgentConfig, AgentResult, SearchResult, DocWindow) are defined in
 ``cs329z_hw1/types.py``. ``lm`` is always an ``LMCallable``: it takes a list
 of ``{"role", "content"}`` messages and returns a string, and nothing else.
 It is a real ``LM`` in the live tests and a ``ScriptedLM`` in the
-deterministic tests.
+deterministic tests. Calling it looks like this:
+
+    reply = lm([{"role": "system", "content": "Answer in one word."},
+                {"role": "user", "content": "What color is the sky?"}])  # -> "Blue."
+
+The roles are system, user, and assistant. There is no tool-calling or
+structured-output feature; in Part 2 you build tool calls as text on top
+of this call.
 """
 
 from __future__ import annotations
