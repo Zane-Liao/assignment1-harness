@@ -266,12 +266,10 @@ uv run python -m cs329z_hw1.chat [--mode confirm|auto] [--memory-dir DIR]
 ## Acknowledgements
 
 This assignment was designed and built by Michael Ryan for Stanford's
-CS329Z, Engineering AI Agents, with lots of help from Claude Fable 5.1. We are
-grateful to the people who shared thoughts and feedback on it, and in
-particular to Houjun Jack Liu, Owen Queen, Shreyas Sharma, and Anantharaman
-Iyer, who worked through an early version of the assignment and told us
-what was wrong with it.
-
-You are welcome to use this assignment in your own course. It is released
-under the MIT license (see `LICENSE`); a brief attribution to CS329Z at
-Stanford is all we ask.
+CS329Z Engineering AI Agents course with lots of help from Claude Fable 5.1.
+We owe a debt of gratitude to the various people who shared thoughts and
+feedback on this assignment. In particular we would like to highlight Houjun
+Jack Liu, Owen Queen, Shreyas Sharma, and Anantharaman Iyer for completing a
+preliminary version of the assignment and offering invaluable feedback. If
+you would like to use this assignment for your course you are welcome to do
+so with brief attribution (MIT license, see `LICENSE`).
