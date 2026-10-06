@@ -48,7 +48,9 @@ def run_priority(email: Email, lm: LMCallable) -> dict:
     * Whatever the model replies, including nothing at all or text in the
       wrong format, ``category`` is one of the three lower-case labels and
       ``reason`` is a non-empty string. A fallback label for a reply you
-      cannot parse is fine.
+      cannot parse is fine. This includes a call that raises
+      ``OutputTruncated`` (the model stopped at max_tokens; ``exc.text`` is
+      what it wrote so far, possibly nothing).
     * The function does not raise and does not modify ``email``.
     * Live: at least 85% agreement with tests/fixtures/priority_gold.json.
     """
@@ -63,7 +65,8 @@ def run_daily_digest(emails: list[Email], lm: LMCallable) -> str:
 
     Rules the tests check:
     * ``len(digest.split()) <= 200`` for every model reply, including a
-      500-word reply, and for an empty day.
+      500-word reply, a call that raises ``OutputTruncated``, and an empty
+      day.
     * The function does not modify ``emails``.
     * Live (tests/fixtures/digest_days.json): the digest is not empty; for
       each gold urgent email it contains the name of the company, project or
@@ -120,7 +123,8 @@ def run_email_qa(
 
     Rules the tests check:
     * ``search`` is called at most 3 times per question (the hop budget),
-      whatever the model replies.
+      whatever the model replies, including a call that raises
+      ``OutputTruncated``.
     * ``support`` is a list of email ids, each the id of an email that
       ``search`` returned during this call. It may be empty.
     * The function does not raise when ``search`` returns no emails or the
@@ -248,9 +252,13 @@ def run_agent_session(
     ``cs329z_hw1/types.py``.
 
     (agent_loop)
-    * ``send`` does not raise for anything the model or a tool does.
-      Exceptions raised by ``lm`` or ``config.user`` propagate (an
-      exception inside a tool function is a "tool_error" like any other).
+    * ``send`` does not raise for anything the model or a tool does. A
+      call that raises ``OutputTruncated`` (the reply was cut off at
+      max_tokens) is handled: the transcript gets an "error" event with
+      non-empty content and the run continues, by sending that text back
+      to the model or by calling again with a larger max_tokens. Any other
+      exception raised by ``lm`` propagates (an exception inside a tool
+      function is a "tool_error" like any other).
       ``AgentResult.text`` is never empty, and
       ``AgentResult.transcript`` is a copy of the transcript at that moment.
     * Messages sent to ``lm`` use only the roles system, user, assistant.

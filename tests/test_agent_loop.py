@@ -20,7 +20,7 @@ from cs329z_hw1.tokens import count_message_tokens, count_tokens
 from cs329z_hw1.types import AgentConfig, AgentResult, ToolCall
 from cs329z_hw1 import adapters
 from tests.fixture_tools import DIRECTORY, FAIL_MESSAGE, TOOL_NAMES, make_fixture_tools
-from tests.helpers import events
+from tests.helpers import events, truncated
 
 KNOWN_TYPES = ("user", "assistant", "tool_call", "tool_result", "error")
 
@@ -321,6 +321,29 @@ def test_malformed_reply_then_recovery(scripted, kind):
     assert shown(lm.calls[1], feedback), (
         f"the error text recorded in the transcript ({feedback!r}) does not appear in "
         "the next model call. The model must see the error to recover."
+    )
+
+
+def test_reply_cut_off_at_max_tokens_then_recovery(scripted):
+    """The first model call raises OutputTruncated (the model stopped at
+    max_tokens), then a valid call, then an answer. send must not raise: the
+    transcript gets an error event for the cut-off reply, and the run ends
+    with status done. Whether the loop sends the error back to the model or
+    calls again with a larger max_tokens is yours; either way the next
+    scripted reply is the valid call."""
+    lm = scripted([truncated("I will call echo with"), call("echo", text="recovered"), "Recovered and finished."])
+    session, fx = make_session(lm)
+    result = send(session, "Do the task.")
+
+    expect_status(result, "done")
+    expect_lm_calls(lm, 3)
+    assert fx.calls == [("echo", {"text": "recovered"})], (
+        f"only the valid echo call should have run; recorded calls: {fx.calls}"
+    )
+    errors = events(session.transcript, "error")
+    assert errors and isinstance(errors[0].get("content"), str) and errors[0]["content"].strip(), (
+        f"the transcript needs an error event with non-empty content for the cut-off reply; "
+        f"got event types {types_of(session.transcript)}"
     )
 
 

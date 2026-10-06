@@ -24,7 +24,7 @@ import traceback
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
-from cs329z_hw1.llm import LM, BudgetExceeded
+from cs329z_hw1.llm import LM, BudgetExceeded, OutputTruncated
 from cs329z_hw1.simulation.checks import run_checks
 from cs329z_hw1.simulation.judge import judge_record
 from cs329z_hw1.simulation.persona import Persona
@@ -52,10 +52,34 @@ def eval_salt() -> str:
     return os.environ.get("CS329Z_EVAL_SALT", "")
 
 
-def make_user_lm(persona: Persona) -> LM:
+class RetryingLM:
+    """An LM that, when a reply is cut off at ``max_tokens``, calls once more
+    with double the budget and then settles for the text it got. Used for
+    the simulated user and the judge, whose replies are short by design."""
+
+    def __init__(self, role: str, *, max_tokens: int, salt: str = "", tag: str) -> None:
+        self.lm = LM(role, max_tokens=max_tokens, salt=salt, tag=tag)
+        self.retry = LM(role, max_tokens=2 * max_tokens, salt=salt, tag=tag)
+        self.model = self.lm.model
+
+    def __call__(self, messages) -> str:
+        try:
+            return self.lm(messages)
+        except OutputTruncated:
+            try:
+                return self.retry(messages)
+            except OutputTruncated as exc:
+                return exc.text
+
+    def usage(self) -> dict:
+        a, b = self.lm.usage(), self.retry.usage()
+        return {k: (a[k] + b[k] if isinstance(a[k], (int, float)) else a[k]) for k in a}
+
+
+def make_user_lm(persona: Persona) -> RetryingLM:
     """The model that plays ``persona``. The salt gives each persona its own
     cache entries."""
-    return LM(
+    return RetryingLM(
         "user",
         max_tokens=USER_MAX_TOKENS,
         salt=f"persona:{persona.id}:{eval_salt()}",
@@ -63,8 +87,8 @@ def make_user_lm(persona: Persona) -> LM:
     )
 
 
-def make_judge_lm(persona: Persona) -> LM:
-    return LM("judge", max_tokens=JUDGE_MAX_TOKENS, tag=f"sim_eval/{persona.id}/judge")
+def make_judge_lm(persona: Persona) -> RetryingLM:
+    return RetryingLM("judge", max_tokens=JUDGE_MAX_TOKENS, tag=f"sim_eval/{persona.id}/judge")
 
 
 def build_config(persona: Persona, user: PersonaUser, memory_dir: Path, workspace: Path) -> AgentConfig:

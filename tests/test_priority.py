@@ -9,7 +9,7 @@ import pytest
 from cs329z_hw1.llm import ScriptedLM
 from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
-from tests.helpers import load_fixture
+from tests.helpers import load_fixture, truncated
 from tests.thresholds import PRIORITY_MIN_ACCURACY
 
 CATEGORIES = ("urgent", "normal", "ignore")
@@ -79,6 +79,15 @@ def test_contract_holds_for_any_reply(name, email):
     result = adapters.run_priority(email, lm)
     check_contract(result, reply)
     assert len(lm.calls) >= 1, "run_priority should call the model at least once; it made no calls."
+
+
+@pytest.mark.parametrize("partial", ["", "The recipient is asked to sign by"], ids=["no_text", "cut_mid_sentence"])
+def test_contract_holds_when_the_reply_is_cut_off(partial):
+    """The model stopped at max_tokens, so lm raises OutputTruncated with the
+    text so far (possibly none). run_priority still returns a valid result."""
+    lm = ScriptedLM([truncated(partial)], repeat_last=True)
+    result = adapters.run_priority(EMAILS[0], lm)
+    check_contract(result, f"<OutputTruncated with text {partial!r}>")
 
 
 def test_email_is_not_modified():

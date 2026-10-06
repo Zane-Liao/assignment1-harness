@@ -9,6 +9,20 @@ from pathlib import Path
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+def truncated(text: str = "", *, max_tokens: int = 64):
+    """A ScriptedLM script entry that raises OutputTruncated, as the real LM
+    does when the model stops at max_tokens. ``text`` is what the model had
+    written so far (``exc.text``)."""
+    from cs329z_hw1.llm import OutputTruncated
+
+    def raise_it(messages):
+        raise OutputTruncated(
+            text, model="scripted", max_tokens=max_tokens, output_tokens=max_tokens, reasoning_tokens=max_tokens - len(text.split())
+        )
+
+    return raise_it
+
+
 def load_fixture(name: str):
     """Load tests/fixtures/<name> (.json, or .jsonl as a list)."""
     path = FIXTURES / name

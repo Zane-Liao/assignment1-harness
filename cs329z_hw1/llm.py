@@ -20,6 +20,10 @@ What the wrapper does for you:
   ``uv run python -m cs329z_hw1.llm`` prints a spending report.
 * Budget stop. If ``CS329Z_BUDGET_USD`` is set, the wrapper raises
   ``BudgetExceeded`` instead of making a call once the ledger total passes it.
+* Truncation. A call that stops because the model reached ``max_tokens``
+  raises ``OutputTruncated`` instead of returning the cut-off text. The
+  exception carries the text produced so far (``.text``) and the token
+  counts. The call is charged and recorded in the ledger but not cached.
 
 ``ScriptedLM`` is a drop-in fake used by the deterministic tests. It replays a
 fixed list of replies and never touches the network.
@@ -91,6 +95,31 @@ class BudgetExceeded(RuntimeError):
 
 class ScriptExhausted(RuntimeError):
     """Raised when a ScriptedLM is called more times than its script allows."""
+
+
+class OutputTruncated(RuntimeError):
+    """Raised when the model stopped because it reached ``max_tokens``.
+
+    ``text`` is what the model wrote before the cut, which is often empty:
+    a reasoning model's hidden reasoning counts against the same limit, so
+    the limit can be used up before any visible text is written.
+    ``output_tokens`` is the whole output, ``reasoning_tokens`` the hidden
+    part of it (0 when the provider does not report it). Calling again with
+    a larger ``max_tokens`` is a new paid call.
+    """
+
+    def __init__(self, text: str, *, model: str, max_tokens: int, output_tokens: int, reasoning_tokens: int = 0):
+        self.text = text
+        self.model = model
+        self.max_tokens = max_tokens
+        self.output_tokens = output_tokens
+        self.reasoning_tokens = reasoning_tokens
+        shown = f"{len(text)} characters of text" if text else "no visible text"
+        super().__init__(
+            f"{model} stopped at max_tokens={max_tokens} with {shown} "
+            f"({output_tokens} output tokens, {reasoning_tokens} of them hidden reasoning). "
+            "Ask for a shorter reply, or call again with a larger max_tokens."
+        )
 
 
 def resolve_model(role_or_model: str | None = None) -> str:
@@ -257,6 +286,7 @@ class LM:
         self.output_tokens += usage["output"]
         self.cost_usd += cost
         self.seconds += elapsed
+        truncated = usage.get("finish_reason") == "length"
         _append_ledger(
             {
                 "ts": round(start, 3),
@@ -267,8 +297,17 @@ class LM:
                 "output_tokens": usage["output"],
                 "cost_usd": cost,
                 "seconds": round(elapsed, 3),
+                "finish_reason": usage.get("finish_reason"),
             }
         )
+        if truncated:  # charged and logged, never cached
+            raise OutputTruncated(
+                text,
+                model=self.model,
+                max_tokens=self.max_tokens,
+                output_tokens=usage["output"],
+                reasoning_tokens=usage.get("reasoning", 0),
+            )
         if self.cache and text.strip():  # an empty reply is not worth remembering
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
@@ -353,14 +392,19 @@ class LM:
                 response = self._client.chat.completions.create(**kwargs)
             else:
                 raise
-        text = response.choices[0].message.content or ""
+        choice = response.choices[0]
+        text = choice.message.content or ""
         u = response.usage
         details = getattr(u, "prompt_tokens_details", None)
         cached = getattr(details, "cached_tokens", 0) or 0
+        out_details = getattr(u, "completion_tokens_details", None)
+        reasoning = getattr(out_details, "reasoning_tokens", 0) or 0
         usage = {
             "input": u.prompt_tokens,
             "cached": cached,
             "output": u.completion_tokens,
+            "reasoning": reasoning,
+            "finish_reason": getattr(choice, "finish_reason", None),
         }
         cost = getattr(u, "cost", None)  # OpenRouter's figure for this call
         if isinstance(cost, (int, float)):
@@ -453,8 +497,9 @@ def spending_report(rows: list[dict] | None = None) -> str:
         short = model.split("-20")[0]  # drop the snapshot date
         tag_key = f"{row.get('tag') or '(untagged)'} [{short}]"
         for table, key in ((by_model, model), (by_tag, tag_key)):
-            agg = table.setdefault(key, {"calls": 0, "in": 0, "out": 0, "usd": 0.0, "sec": 0.0})
+            agg = table.setdefault(key, {"calls": 0, "cut": 0, "in": 0, "out": 0, "usd": 0.0, "sec": 0.0})
             agg["calls"] += 1
+            agg["cut"] += row.get("finish_reason") == "length"
             agg["in"] += row.get("input_tokens", 0)
             agg["out"] += row.get("output_tokens", 0)
             agg["usd"] += row.get("cost_usd", 0.0)
@@ -462,15 +507,16 @@ def spending_report(rows: list[dict] | None = None) -> str:
     lines = []
     for title, table in (("By model", by_model), ("By tag and model", by_tag)):
         lines.append(title)
-        lines.append(f"  {'name':<78}{'calls':>7}{'in tok':>12}{'out tok':>10}{'USD':>9}{'sec':>8}")
+        lines.append(f"  {'name':<72}{'calls':>7}{'cut':>5}{'in tok':>12}{'out tok':>10}{'USD':>9}{'sec':>8}")
         for key, agg in sorted(table.items(), key=lambda kv: -kv[1]["usd"]):
             lines.append(
-                f"  {key[-77:]:<78}{agg['calls']:>7}{agg['in']:>12}{agg['out']:>10}"
+                f"  {key[-71:]:<72}{agg['calls']:>7}{agg['cut'] or '':>5}{agg['in']:>12}{agg['out']:>10}"
                 f"{agg['usd']:>9.3f}{agg['sec']:>8.0f}"
             )
         lines.append("")
     total = sum(r.get("cost_usd", 0.0) for r in rows)
-    lines.append(f"Total: {len(rows)} calls, ${total:.3f}")
+    cut = sum(r.get("finish_reason") == "length" for r in rows)
+    lines.append(f"Total: {len(rows)} calls, ${total:.3f}" + (f"; {cut} cut off at max_tokens" if cut else ""))
     return "\n".join(lines)
 
 
