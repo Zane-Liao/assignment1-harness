@@ -125,7 +125,8 @@ def run_email_qa(
 
     Answer ``question`` from the email archive. ``search(query, k)`` returns
     the top-k emails for a query (the tests build it from YOUR BM25 index;
-    you choose k). Return {"answer": str, "support": list[str]}.
+    you choose k). Return {"answer": str | None, "support": list[str]};
+    ``answer`` is None when no answer was found.
 
     Rules the tests check:
     * ``search`` is called at most 3 times per question (the hop budget),

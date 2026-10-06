@@ -151,7 +151,7 @@ def show_email_qa(args) -> None:
 
     print(f"{paint('Question:', 'bold')} {args.question}\n")
     result = adapters.run_email_qa(args.question, search, lm)
-    print(f"\n{paint('Answer:', 'bold')} {result['answer']}")
+    print(f"\n{paint('Answer:', 'bold')} {result['answer'] if result['answer'] is not None else paint('(none found)', 'dim')}")
     print(paint("Support:", "bold"))
     for email_id in result["support"]:
         email = returned.get(email_id)

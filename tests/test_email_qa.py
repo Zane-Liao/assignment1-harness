@@ -68,7 +68,9 @@ def check_shape(result, search: FakeSearch, context: str) -> None:
     assert "answer" in result and "support" in result, (
         f"The result needs the keys 'answer' and 'support'. {shown}"
     )
-    assert isinstance(result["answer"], str), f"'answer' must be a string. {shown}"
+    assert result["answer"] is None or isinstance(result["answer"], str), (
+        f"'answer' must be a string, or None when no answer was found. {shown}"
+    )
     assert isinstance(result["support"], list) and all(
         isinstance(i, str) for i in result["support"]
     ), f"'support' must be a list of email id strings. {shown}"
