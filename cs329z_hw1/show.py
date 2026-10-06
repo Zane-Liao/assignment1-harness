@@ -142,10 +142,17 @@ def show_email_qa(args) -> None:
     lm = LM(tag="show/email_qa")
     started = time.time()
     returned: dict[str, dict] = {}
+    hops = 0
 
     def search(query: str, k: int = 5) -> list[dict]:
+        nonlocal hops
+        hops += 1
         hits = [archive[doc_id] for doc_id, _ in adapters.run_bm25_search(index, query, k)]
-        print(paint(f"  search({query!r}, {k}) -> {[e['id'] for e in hits]}", "dim"))
+        print(f"{paint(f'search {hops}:', 'bold')} {paint(query, 'yellow')}  {paint(f'(k={k}, {len(hits)} results)', 'dim')}")
+        for e in hits[:5]:
+            print(f"    {paint(e['id'], 'cyan')}  {e.get('subject') or '(no subject)'}")
+        if len(hits) > 5:
+            print(paint(f"    ... and {len(hits) - 5} more", "dim"))
         returned.update((e["id"], e) for e in hits)
         return hits
 
