@@ -193,6 +193,9 @@ def run_parse_response(text: str) -> ParsedResponse:
 
     Rules the tests check:
     * Never raises, for any string.
+    * ``text`` is the reply with the call removed, stripped of surrounding
+      whitespace: parsing ``run_format_tool_call("Looking.", call)`` gives
+      ``text == "Looking."``.
     * A reply with no call: ``tool_call`` is None and ``error`` is None.
     * A reply with more than one call: ``tool_call`` is None and ``error``
       is a non-empty string.
