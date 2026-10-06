@@ -266,7 +266,7 @@ uv run python -m cs329z_hw1.chat [--mode confirm|auto] [--memory-dir DIR]
 ## Acknowledgements
 
 This assignment was designed and built by Michael Ryan for Stanford's
-CS329Z, Engineering AI Agents, with lots of help from Claude Fable. We are
+CS329Z, Engineering AI Agents, with lots of help from Claude Fable 5.1. We are
 grateful to the people who shared thoughts and feedback on it, and in
 particular to Houjun Jack Liu, Owen Queen, Shreyas Sharma, and Anantharaman
 Iyer, who worked through an early version of the assignment and told us
