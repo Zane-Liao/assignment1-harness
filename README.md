@@ -269,7 +269,7 @@ This assignment was designed and built by Michael Ryan for Stanford's
 CS329Z Engineering AI Agents course with lots of help from Claude Fable 5.1.
 We owe a debt of gratitude to the various people who shared thoughts and
 feedback on this assignment. In particular we would like to highlight Houjun
-Jack Liu, Owen Queen, Shreyas Sharma, and Anantharaman Iyer for completing a
+(Jack) Liu, Owen Queen, Shreyas Sharma, and Anantharaman Iyer for completing a
 preliminary version of the assignment and offering invaluable feedback. If
 you would like to use this assignment for your course you are welcome to do
 so with brief attribution (MIT license, see `LICENSE`).
