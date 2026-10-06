@@ -2,6 +2,7 @@
 
     uv run python -m cs329z_hw1.show priority em-12167 [em-...]   # label one or more emails
     uv run python -m cs329z_hw1.show digest 2001-06-22 [--labels] [--limit N]  # the digest for one day
+    uv run python -m cs329z_hw1.show bm25 "larchfield audit" [--k 10]   # search the archive with your index
     uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
     uv run python -m cs329z_hw1.show search_docs "parental leave" [--k 5]
 
@@ -84,13 +85,40 @@ def show_digest(args) -> None:
     _finish(lm, started)
 
 
+_archive_index: dict = {}
+
+
+def archive_index():
+    """Your BM25 index over the archive, built once per process (a few seconds)."""
+    if "index" not in _archive_index:
+        from cs329z_hw1 import adapters
+
+        archive = data.load_emails()
+        started = time.time()
+        index = adapters.run_bm25_build([data.email_text(e) for e in archive])
+        print(f"[index built over {len(archive)} emails in {time.time() - started:.1f} s]", flush=True)
+        _archive_index.update(archive=archive, index=index)
+    return _archive_index["archive"], _archive_index["index"]
+
+
+def show_bm25(args) -> None:
+    from cs329z_hw1 import adapters
+
+    archive, index = archive_index()
+    started = time.time()
+    hits = adapters.run_bm25_search(index, args.query, args.k)
+    elapsed = (time.time() - started) * 1000
+    print(f"bm25({args.query!r}, k={args.k}) -> {len(hits)} results in {elapsed:.1f} ms\n")
+    for doc_id, score in hits:
+        print(f"{score:8.3f}  {_email_header(archive[doc_id])}")
+
+
 def show_email_qa(args) -> None:
     from cs329z_hw1 import adapters
 
-    archive = data.load_emails()
+    archive, index = archive_index()
     lm = LM(tag="show/email_qa")
     started = time.time()
-    index = adapters.run_bm25_build([data.email_text(e) for e in archive])
     returned: dict[str, dict] = {}
 
     def search(query: str, k: int = 5) -> list[dict]:
@@ -130,6 +158,10 @@ def main() -> None:
     p.add_argument("--labels", action="store_true", help="also print each email's priority label")
     p.add_argument("--limit", type=int, default=None, metavar="N", help="use only the first N emails of the day")
     p.set_defaults(fn=show_digest)
+    p = sub.add_parser("bm25", help="search the archive with your BM25 index")
+    p.add_argument("query")
+    p.add_argument("--k", type=int, default=10)
+    p.set_defaults(fn=show_bm25)
     p = sub.add_parser("email_qa", help="answer a question over the archive")
     p.add_argument("question")
     p.set_defaults(fn=show_email_qa)
