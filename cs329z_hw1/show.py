@@ -20,6 +20,7 @@ the archive holds about 280 emails (the live tests use about 30 per day);
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -29,18 +30,35 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from cs329z_hw1 import data  # noqa: E402
 from cs329z_hw1.llm import LM  # noqa: E402
 
+# ANSI colors, on when stdout is a terminal and NO_COLOR is not set.
+_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+_CODES = {"bold": "1", "dim": "2", "red": "31", "green": "32", "yellow": "33", "blue": "34", "cyan": "36"}
+
+
+def paint(text, *styles: str) -> str:
+    if not _COLOR or not styles:
+        return str(text)
+    return "".join(f"\033[{_CODES[s]}m" for s in styles) + str(text) + "\033[0m"
+
+
+LABEL_STYLE = {"urgent": ("red", "bold"), "normal": ("green",), "ignore": ("dim",), "unknown": ("yellow", "bold")}
+
+
+def label(category: str) -> str:
+    return paint(category, *LABEL_STYLE.get(category, ("yellow",)))
+
 
 def _email_header(email: dict) -> str:
     return (
-        f"{email['id']}  {email['date'][:16]}  from {email.get('from', '')}\n"
-        f"  subject: {email.get('subject') or '(no subject)'}"
+        f"{paint(email['id'], 'cyan')}  {paint(email['date'][:16], 'dim')}  from {email.get('from', '')}\n"
+        f"  {paint('subject:', 'dim')} {paint(email.get('subject') or '(no subject)', 'bold')}"
     )
 
 
 def _finish(lm: LM, started: float) -> None:
     u = lm.usage()
     cached = f", {u['cached_calls']} from the cache" if u["cached_calls"] else ""
-    print(f"\n[{u['calls']} model calls{cached}; ${u['cost_usd']:.4f}; {time.time() - started:.1f} s]")
+    print(paint(f"\n[{u['calls']} model calls{cached}; ${u['cost_usd']:.4f}; {time.time() - started:.1f} s]", "dim"))
 
 
 def show_priority(args) -> None:
@@ -57,8 +75,8 @@ def show_priority(args) -> None:
         result = adapters.run_priority(email, lm)
         print(_email_header(email))
         body = " ".join(email["body"].split())
-        print(f"  body: {body[:300]}{'...' if len(body) > 300 else ''}")
-        print(f"  -> {result['category']}: {result['reason']}\n")
+        print(f"  {paint('body:', 'dim')} {body[:300]}{'...' if len(body) > 300 else ''}")
+        print(f"  -> {label(result['category'])}: {result['reason']}\n")
     _finish(lm, started)
 
 
@@ -71,17 +89,18 @@ def show_digest(args) -> None:
     total = len(emails)
     if args.limit:
         emails = emails[: args.limit]
-    print(f"Running your digest on {len(emails)} of the {total} emails of {args.date}...", flush=True)
+    print(paint(f"Running your digest on {len(emails)} of the {total} emails of {args.date}...", "dim"), flush=True)
     lm = LM(tag="show/digest")
     started = time.time()
     digest = adapters.run_daily_digest(emails, lm)
-    print(f"\nDigest for {args.date} ({len(emails)} emails, {len(digest.split())} words):\n")
+    print(paint(f"\nDigest for {args.date} ({len(emails)} emails, {len(digest.split())} words):\n", "bold"))
     print(digest)
     if args.labels:
-        print(f"\nLabels from your run_priority:")
+        print(paint("\nLabels from your run_priority:", "bold"))
         for email in emails:
             result = adapters.run_priority(email, lm)
-            print(f"  {result['category']:<8} {email['id']}  {email.get('subject') or '(no subject)'}")
+            print(f"  {label(result['category']):<{8 + (len(label(result['category'])) - len(result['category']))}} "
+                  f"{paint(email['id'], 'cyan')}  {email.get('subject') or '(no subject)'}")
     _finish(lm, started)
 
 
@@ -96,7 +115,7 @@ def archive_index():
         archive = data.load_emails()
         started = time.time()
         index = adapters.run_bm25_build([data.email_text(e) for e in archive])
-        print(f"[index built over {len(archive)} emails in {time.time() - started:.1f} s]", flush=True)
+        print(paint(f"[index built over {len(archive)} emails in {time.time() - started:.1f} s]", "dim"), flush=True)
         _archive_index.update(archive=archive, index=index)
     return _archive_index["archive"], _archive_index["index"]
 
@@ -108,12 +127,12 @@ def show_bm25(args) -> None:
     started = time.time()
     hits = adapters.run_bm25_search(index, args.query, args.k)
     elapsed = (time.time() - started) * 1000
-    print(f"bm25({args.query!r}, k={args.k}) -> {len(hits)} results in {elapsed:.1f} ms\n")
+    print(paint(f"bm25({args.query!r}, k={args.k}) -> {len(hits)} results in {elapsed:.1f} ms\n", "bold"))
     for doc_id, score in hits:
         email = archive[doc_id]
         words = email["body"].split()
         body = " ".join(words[:100]) + (" ..." if len(words) > 100 else "")
-        print(f"{score:8.3f}  {_email_header(email)}\n  {body}\n")
+        print(f"{paint(f'{score:8.3f}', 'yellow', 'bold')}  {_email_header(email)}\n  {body}\n")
 
 
 def show_email_qa(args) -> None:
@@ -126,14 +145,14 @@ def show_email_qa(args) -> None:
 
     def search(query: str, k: int = 5) -> list[dict]:
         hits = [archive[doc_id] for doc_id, _ in adapters.run_bm25_search(index, query, k)]
-        print(f"  search({query!r}, {k}) -> {[e['id'] for e in hits]}")
+        print(paint(f"  search({query!r}, {k}) -> {[e['id'] for e in hits]}", "dim"))
         returned.update((e["id"], e) for e in hits)
         return hits
 
-    print(f"Question: {args.question}\n")
+    print(f"{paint('Question:', 'bold')} {args.question}\n")
     result = adapters.run_email_qa(args.question, search, lm)
-    print(f"\nAnswer: {result['answer']}")
-    print("Support:")
+    print(f"\n{paint('Answer:', 'bold')} {result['answer']}")
+    print(paint("Support:", "bold"))
     for email_id in result["support"]:
         email = returned.get(email_id)
         print(f"  {_email_header(email) if email else email_id + '  (not returned by search)'}")
@@ -145,9 +164,9 @@ def show_search_docs(args) -> None:
 
     index = adapters.run_build_doc_index(data.load_docs())
     results = adapters.run_search_docs(index, args.query, args.k)
-    print(f"search_docs({args.query!r}, {args.k}) -> {len(results)} results\n")
+    print(paint(f"search_docs({args.query!r}, {args.k}) -> {len(results)} results\n", "bold"))
     for r in results:
-        print(f"{r['doc_id']}  ({r['title']})\n  {r['snippet']}\n")
+        print(f"{paint(r['doc_id'], 'cyan')}  {paint('(' + r['title'] + ')', 'dim')}\n  {r['snippet']}\n")
 
 
 def main() -> None:
