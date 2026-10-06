@@ -186,7 +186,7 @@ You may add files and subpackages inside `cs329z_hw1/`. Grading copies
 your whole `cs329z_hw1/` package into a clean starter and discards
 everything else, so a helper you put under `tests/` or anywhere outside the
 package is not there when we grade. Do not add dependencies to
-`pyproject.toml`.
+`pyproject.toml`; NumPy is already one, and you may use it anywhere.
 
 ## The terminal sandbox
 
