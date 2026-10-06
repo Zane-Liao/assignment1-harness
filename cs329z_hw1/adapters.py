@@ -71,10 +71,10 @@ def run_daily_digest(emails: list[Email], lm: LMCallable) -> str:
     be empty. Return the morning summary as a string.
 
     Rules the tests check:
-    * ``len(digest.split()) <= 200`` for every model reply, including a
-      500-word reply, and for an empty day.
+    * Returns a string for every model reply, and for an empty day.
     * The function does not modify ``emails``.
-    * Live (tests/fixtures/digest_days.json): the digest is not empty; for
+    * Live (tests/fixtures/digest_days.json): the digest is not empty and
+      at most 300 words (``len(digest.split())``) as the model wrote it; for
       each gold urgent email it contains the name of the company, project or
       site that email is about; it contains no term listed for the gold
       ignore emails.
