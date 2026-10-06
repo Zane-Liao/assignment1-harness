@@ -2,7 +2,7 @@
 
 This is the starter repository for Assignment 1.
 
-**Start by reading the handout, [`hw1.pdf`](hw1.pdf), in this directory.**
+**Start by reading the handout, [`cs329z_assignment1_harness.pdf`](cs329z_assignment1_harness.pdf), in this directory.**
 It states every problem, what is graded, and the design decisions that
 are yours to make. This file covers setup, the commands you will run, and
 where things are.
