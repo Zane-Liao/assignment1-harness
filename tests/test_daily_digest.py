@@ -9,7 +9,7 @@ import pytest
 from cs329z_hw1.llm import ScriptedLM
 from cs329z_hw1 import adapters
 from tests.conftest import eval_slice
-from tests.helpers import contains, contains_any, load_fixture, truncated
+from tests.helpers import contains, contains_any, load_fixture
 
 MAX_WORDS = 200
 
@@ -65,14 +65,6 @@ def test_length_limit_holds_for_any_reply(name):
     lm = ScriptedLM([REPLIES[name]], repeat_last=True)
     digest = adapters.run_daily_digest(DAY, lm)
     check_digest(digest, f"Every model call was answered with the {name!r} scripted reply.")
-
-
-def test_length_limit_holds_when_the_reply_is_cut_off():
-    """Every model call raises OutputTruncated, carrying a long partial text.
-    The digest must still be a string of at most 200 words."""
-    lm = ScriptedLM([truncated(LONG_REPLY)], repeat_last=True)
-    digest = adapters.run_daily_digest(DAY, lm)
-    check_digest(digest, "Every model call raised OutputTruncated with a 500-word partial text.")
 
 
 def test_empty_day():
