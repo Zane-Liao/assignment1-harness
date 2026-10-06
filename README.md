@@ -263,3 +263,15 @@ Once `run_agent_session` works, you can talk to your agent in the terminal.
 uv run python -m cs329z_hw1.chat [--mode confirm|auto] [--memory-dir DIR]
 ```
 
+## Acknowledgements
+
+This assignment was designed and built by Michael Ryan for Stanford's
+CS329Z, Engineering AI Agents, with lots of help from Claude Fable. We are
+grateful to the people who shared thoughts and feedback on it, and in
+particular to Houjun Jack Liu, Owen Queen, Shreyas Sharma, and Anantharaman
+Iyer, who worked through an early version of the assignment and told us
+what was wrong with it.
+
+You are welcome to use this assignment in your own course. It is released
+under the MIT license (see `LICENSE`); a brief attribution to CS329Z at
+Stanford is all we ask.
