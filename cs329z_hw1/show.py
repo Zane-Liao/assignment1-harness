@@ -5,7 +5,7 @@
     uv run python -m cs329z_hw1.show bm25 "larchfield audit" [--k 5]    # search the archive with your index
     uv run python -m cs329z_hw1.show email_qa "Who leads the Basin Analytics move?"
     uv run python -m cs329z_hw1.show search_docs "parental leave" [--k 5]
-    uv run python -m cs329z_hw1.show memory [runs/sim-...]        # what each persona's memory holds after an evaluation
+    uv run python -m cs329z_hw1.show memory [DIR]   # a memory store (e.g. .lm_cache/chat_memory), or every persona's after an evaluation
 
 Each command calls your adapters the way the tests do, on the grading model,
 and prints the result with the cost and time of the calls. Repeating a
@@ -178,27 +178,35 @@ def show_search_docs(args) -> None:
         print(f"{paint(r['doc_id'], 'cyan')}  {paint('(' + r['title'] + ')', 'dim')}\n  {r['snippet']}\n")
 
 
+def _print_store(store: Path, label: str) -> None:
+    files = sorted(f for f in store.rglob("*") if f.is_file())
+    print(f"{paint(label, 'cyan')}  {paint('(empty)' if not files else '', 'dim')}")
+    for f in files:
+        text = f.read_text(encoding="utf-8", errors="replace")
+        try:
+            text = json.dumps(json.loads(text), indent=2, ensure_ascii=False)
+        except ValueError:
+            pass
+        print(paint(f"  {f.relative_to(store)}", "dim"))
+        for line in text.splitlines():
+            print(f"    {line}")
+    print()
+
+
 def show_memory(args) -> None:
-    """Every file in every persona's .memory/ directory of one evaluation
-    run (the latest under runs/ unless a directory is given)."""
-    run = Path(args.run) if args.run else max(Path("runs").glob("sim-*"), default=None, key=lambda p: p.stat().st_mtime)
-    if run is None or not run.is_dir():
-        sys.exit("No evaluation run found under runs/. Run the evaluation first.")
-    stores = sorted(run.glob("*.memory"))
-    print(paint(f"Memory after {run}: {len(stores)} personas\n", "bold"))
-    for store in stores:
-        files = sorted(f for f in store.rglob("*") if f.is_file())
-        print(f"{paint(store.name[:-len('.memory')], 'cyan')}  {paint('(empty)' if not files else '', 'dim')}")
-        for f in files:
-            text = f.read_text(encoding="utf-8", errors="replace")
-            try:
-                text = json.dumps(json.loads(text), indent=2, ensure_ascii=False)
-            except ValueError:
-                pass
-            print(paint(f"  {f.relative_to(store)}", "dim"))
-            for line in text.splitlines():
-                print(f"    {line}")
-        print()
+    """A memory store (every file in the directory), or, for an evaluation
+    run under runs/, every persona's store. With no argument: the latest
+    evaluation run."""
+    path = Path(args.path) if args.path else max(Path("runs").glob("sim-*"), default=None, key=lambda p: p.stat().st_mtime)
+    if path is None or not path.is_dir():
+        sys.exit(f"No such directory: {path or 'runs/sim-*'}. Give a memory directory (chat.py uses .lm_cache/chat_memory) or an evaluation run.")
+    stores = sorted(path.glob("*.memory"))
+    if stores:
+        print(paint(f"Memory after {path}: {len(stores)} personas\n", "bold"))
+        for store in stores:
+            _print_store(store, store.name[:-len(".memory")])
+    else:
+        _print_store(path, str(path))
 
 
 def main() -> None:
@@ -219,8 +227,8 @@ def main() -> None:
     p = sub.add_parser("email_qa", help="answer a question over the archive")
     p.add_argument("question")
     p.set_defaults(fn=show_email_qa)
-    p = sub.add_parser("memory", help="each persona's memory store after an evaluation run")
-    p.add_argument("run", nargs="?", default=None, help="a runs/sim-* directory (default: the latest)")
+    p = sub.add_parser("memory", help="a memory store, or every persona's after an evaluation run")
+    p.add_argument("path", nargs="?", default=None, help="a memory directory, or a runs/sim-* directory (default: the latest run)")
     p.set_defaults(fn=show_memory)
     p = sub.add_parser("search_docs", help="search the company documents")
     p.add_argument("query")
